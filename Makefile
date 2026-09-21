@@ -3,6 +3,9 @@ PC = python3
 run:
 	uv run $(PC) -m src
 
+index:
+	uv run $(PC) -m src index "alpha"
+
 debug:
 	uv run $(PC) -m pdb -m src
 

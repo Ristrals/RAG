@@ -1,6 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
-from pydantic import BaseModel
+import uuid
+from pydantic import BaseModel, Field
 
 
 class MinimalSource(BaseModel):
@@ -10,33 +11,34 @@ class MinimalSource(BaseModel):
 
 
 class UnansweredQuestion(BaseModel):
-    question_id: str = Field(default_factory=lambda:
-    str(uuid.uuid4()))
+    question_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     question: str
 
 
 class AnsweredQuestion(UnansweredQuestion):
-    sources: List[MinimalSource]
+    sources: list[MinimalSource]
     answer: str
 
 
 class RagDataset(BaseModel):
-    rag_questions: List[AnsweredQuestion | UnansweredQuestion]
+    rag_questions: list[AnsweredQuestion | UnansweredQuestion]
+
 
 class MinimalSearchResults(BaseModel):
     question_id: str
     question: str
-    retrieved_sources: List[MinimalSource]
+    retrieved_sources: list[MinimalSource]
+
 
 class MinimalAnswer(MinimalSearchResults):
     answer: str
 
 
 class StudentSearchResults(BaseModel):
-    search_results: List[MinimalSearchResults]
+    search_results: list[MinimalSearchResults]
     k: int
 
 
 class StudentSearchResultsAndAnswer(BaseModel):
-    search_results: List[MinimalAnswer]
+    search_results: list[MinimalAnswer]
     k: int
