@@ -8,6 +8,6 @@ class Chunker(ABC):
     """ Chunker class """
 
     @abstractmethod
-    def chunk_files(self, files_dict: dict[Path, list[Path]]) -> None:
+    def chunk_files(self, files_dict: dict[str, list[Path]]) -> None:
         pass
     pass
