@@ -6,5 +6,6 @@ from src.index import Chunker
 
 class MDChunker(Chunker):
     def chunk_files(self, files_dict) -> None:
-        pass
-    pass
+        for project, files in files_dict.items():
+            project_dir: Path = project
+            files_list: list[Path] = files
