@@ -16,8 +16,8 @@ class Indexer:
         self.raw_dir: Path = Path("data/raw")
         self.chunk_size: int = chunk_size
         self.projects: list[Path] = []
-        self.py_files: dict[Path, list[Path]] = {}
-        self.md_files: dict[Path, list[Path]] = {}
+        self.py_files: dict[str, list[Path]] = {}
+        self.md_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
         self.get_files()
@@ -37,13 +37,13 @@ class Indexer:
             self.get_projects()
 
         for project in self.projects:
-            self.py_files[project] = []
-            self.md_files[project] = []
+            self.py_files[project.name] = []
+            self.md_files[project.name] = []
 
             for file_path in project.rglob("*"):
                 if file_path.is_file() and not file_path.name.startswith("."):
                     ext = file_path.suffix.lower()
                     if ext == ".py":
-                        self.py_files[project].append(file_path)
+                        self.py_files[project.name].append(file_path)
                     elif ext == ".md":
-                        self.md_files[project].append(file_path)
+                        self.md_files[project.name].append(file_path)
