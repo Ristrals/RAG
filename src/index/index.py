@@ -1,20 +1,24 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 from pathlib import Path
-from src.index import Chunker, PYChunker as PyC, MDChunker as MdC
-from src.index import Ie, Iet
+
+from src.index.chunker import Chunker
+from src.index.md_chunker import MDChunker as MdC
+from src.index.py_chunker import PYChunker as PyC
+
+# from src.index import Chunker, PYChunker as PyC, MDChunker as MdC
+# from src.index import Ie, Iet
 
 
 class Indexer:
     __SUPPORTED_EXT: list[str] = [".py", ".md"]
 
-    def __init__(self, chunk_size: int = 1000) -> None:
+    def __init__(self, max_chunk_size: int = 1000) -> None:
         self.chunkers: dict[str, Chunker] = {
-            "py": PyC(),
-            "md": MdC(),
+            "py": PyC(max_chunk_size),
+            "md": MdC(max_chunk_size),
         }
         self.raw_dir: Path = Path("data/raw")
-        self.chunk_size: int = chunk_size
         self.projects: list[Path] = []
         self.py_files: dict[str, list[Path]] = {}
         self.md_files: dict[str, list[Path]] = {}
