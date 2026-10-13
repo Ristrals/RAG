@@ -1,13 +1,18 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+import json
 from pathlib import Path
 
-from src.index.chunker import Chunker
-from src.index.md_chunker import MDChunker as MdC
-from src.index.py_chunker import PYChunker as PyC
+# /!\ For local file execution
+# from src.index.chunker import Chunker
+# from src.index.md_chunker import MDChunker as MdC
+# from src.index.py_chunker import PYChunker as PyC
 
-# from src.index import Chunker, PYChunker as PyC, MDChunker as MdC
-# from src.index import Ie, Iet
+from src.operator import BM25Op, VectorOp
+from src.utils import PathFinder
+from src.lib import DocSrc
+from src.index import Chunker, PYChunker as PyC, MDChunker as MdC
+from src.index import Ie, Iet
 
 
 class Indexer:
@@ -18,21 +23,38 @@ class Indexer:
             "py": PyC(max_chunk_size),
             "md": MdC(max_chunk_size),
         }
-        self.raw_dir: Path = Path("data/raw")
+        self.operators: dict[str, BM25Op | VectorOp] = {
+            "bm25": BM25Op(),
+            "vector": VectorOp(),
+        }
+        self.path_finder = PathFinder()
+        self.path_finder.secure_index_directories()
         self.projects: list[Path] = []
         self.py_files: dict[str, list[Path]] = {}
         self.md_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
         self.get_files()
+
+        document_sources: list[DocSrc] = []
+
         self.chunkers["py"].chunk_files(self.py_files)
         self.chunkers["md"].chunk_files(self.md_files)
 
+        for chunker in self.chunkers.values():
+            for chunk in chunker.chunks:
+                document_sources.append(DocSrc.from_chunk(chunk))
+
+        with open(self.path_finder.processed_dir / "std_index.json", "w", encoding="utf-8") as file:
+            file.write(json.dumps([doc.model_dump() for doc in document_sources], indent=4))
+
+        self.operators["bm25"].index(document_sources, self.path_finder.bm25_dir)
+        self.operators["vector"].index(document_sources, self.path_finder.vector_dir)
 
     def get_projects(self) -> None:
-        if not self.raw_dir.exists():
+        if not self.path_finder.raw_dir.exists():
             raise FileNotFoundError()
-        for project in self.raw_dir.iterdir():
+        for project in self.path_finder.raw_dir.iterdir():
             if project.is_dir() and not project.name.startswith("."):
                 self.projects.append(project)
 

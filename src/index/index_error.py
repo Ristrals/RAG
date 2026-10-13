@@ -10,6 +10,7 @@ class IndexerErrorTypes(Enum):
     def error_str(self) -> str:
         return self.value
 
+
 class IndexerError(Exception):
     """Index error handler"""
     def __init__(self, err_type: "IndexerErrorTypes", message: Exception):
@@ -19,8 +20,10 @@ class IndexerError(Exception):
     def __str__(self):
         pass
 
+
 class APIErrorTypes(Enum):
     pass
+
 
 class APIErrorHandler(Exception):
     """API error handler"""

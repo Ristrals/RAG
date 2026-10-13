@@ -19,9 +19,13 @@ clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -type d -name ".mypy_cache" -exec rm -rf {} +
 
-fclean: clean
+purge:
+	rm -rf data/processed
+
+fclean: clean purge
 	rm -rf .venv
-	rm -rf .cache/uv uv cache clean
+	rm -rf .cache/uv
+	uv cache clean
 
 lint:
 	flake8

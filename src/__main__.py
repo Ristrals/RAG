@@ -3,6 +3,9 @@
 import fire
 from src.interface.cli import RAGCLI
 
-if __name__ == '__main__':
+
+def main():
     fire.Fire(RAGCLI)
-    pass
+
+if __name__ == '__main__':
+    main()

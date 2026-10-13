@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+from src.index import Indexer
+
 
 class RAGCLI:
     def __init__(self):
@@ -7,7 +9,8 @@ class RAGCLI:
 
     def index(self, max_chunk_size: int = 1000):
         """index datasets"""
-        print(f"interesting! mns: {max_chunk_size}")
+        indexer = Indexer(max_chunk_size=max_chunk_size)
+        indexer.index()
         pass
 
     def search(self, query: str, k: int):
