@@ -34,7 +34,7 @@ class Indexer:
         self.md_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
-        self.get_files()
+        self._get_files()
 
         document_sources: list[DocSrc] = []
 
@@ -58,7 +58,7 @@ class Indexer:
             if project.is_dir() and not project.name.startswith("."):
                 self.projects.append(project)
 
-    def get_files(self) -> None:
+    def _get_files(self) -> None:
         if not self.projects:
             self.get_projects()
 

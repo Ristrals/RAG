@@ -1,6 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
 
@@ -29,3 +30,8 @@ class Chunk:
     hierarchy: str
     file_path: Path
     project: str
+
+class ResearchType(Enum):
+    LEXICAL = "lexical"
+    VECTOR = "vector"
+    HYBRID = "hybrid"

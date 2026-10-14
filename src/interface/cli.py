@@ -7,7 +7,7 @@ class RAGCLI:
     def __init__(self):
         pass
 
-    def index(self, max_chunk_size: int = 1000):
+    def index(self, max_chunk_size: int = 2000):
         """index datasets"""
         indexer = Indexer(max_chunk_size=max_chunk_size)
         indexer.index()
