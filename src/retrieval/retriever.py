@@ -1,6 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 import json
+import uuid
 from pathlib import Path
 
 from src.lib import (
@@ -19,24 +20,15 @@ class Retriever:
 
     def __init__(
         self, path_finder: PathFinder,
-            k: int,
-            doc_store: dict[str, dict],
-            mode: RsrchType = RsrchType.LEXICAL
-            ) -> None:
+        mode: RsrchType,
+        docsrc_store: dict[str, dict],
+        k: int = 10,
+    ) -> None:
+
         self.path_finder = path_finder
         self.mode = mode
         self.k = k
-
-        self.doc_store = doc_store
-
-        try:
-            assert isinstance(self.path_finder.dataset_path, Path)
-            self.path_finder.validate_file_reading(self.path_finder.dataset_path, "Dataset not found")
-            with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
-                raw_data = json.load(f)
-                self.dataset: RagDataset = RagDataset.model_validate(raw_data)
-        except Exception as e:
-            raise e # TOBBE HANDLED TO VERIFY PROPER JSON SCHEMA
+        self.docsrc_store: dict[str, dict] = docsrc_store
 
         if mode == RsrchType.LEXICAL or mode == RsrchType.HYBRID:
             self.bm25_op = BM25Op()
@@ -45,7 +37,7 @@ class Retriever:
             self.vector_op = VectorOp()
             self.vector_op.load(self.path_finder.vector_dir)
 
-    def research(self, question_id: str, question_text: str) -> MinSrchRes:
+    def research(self, question_id: str | None, question_text: str) -> MinSrchRes:
         raw_results: list[tuple[str, float]] = []
         retrieved_sources: list[MinSrc] = []
 
@@ -60,7 +52,7 @@ class Retriever:
                 raw_results = self._hybrid_research_calculation(raw_bm25_res, raw_vector_res)
 
         for doc_id, score in raw_results:
-            doc_data = self.doc_store.get(doc_id, {})
+            doc_data = self.docsrc_store.get(doc_id, {})
             retrieved_sources.append(
                 MinSrc(
                     file_path=doc_data.get("file_path", ""),
@@ -70,14 +62,23 @@ class Retriever:
             )
 
         return MinSrchRes(
-            question_id=question_id,
+            question_id=question_id if question_id else str(uuid.uuid4()),
             question=question_text,
             retrieved_sources=retrieved_sources
         )
 
     def research_set(self) -> StuSrchRes:
+        try:
+            assert isinstance(self.path_finder.dataset_path, Path)
+            self.path_finder.validate_file_reading(self.path_finder.dataset_path, "Dataset not found")
+            with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
+                raw_data = json.load(f)
+                dataset: RagDataset = RagDataset.model_validate(raw_data)
+        except Exception as e:
+            raise e # TOBBE HANDLED TO VERIFY PROPER JSON SCHEMA
+
         student_search_results: list[MinSrchRes] = []
-        for query in self.dataset.rag_questions:
+        for query in dataset.rag_questions:
             student_search_results.append(self.research(query.question_id, query.question))
         return StuSrchRes(
             search_results=student_search_results,

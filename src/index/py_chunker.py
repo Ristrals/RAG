@@ -11,13 +11,7 @@ from src.lib import CodeNode, Chunk
 class PYChunker(Chunker):
     def __init__(self, max_chunk_size: int) -> None:
         super().__init__(max_chunk_size)
-        self._project_dir: str = ""
-        self._files_list: list[Path] = []
-        self._current_file_path: Path = Path()
-        self._file_content: str = ""
         self._code_nodes: list[CodeNode] = []
-        self._index_cursor: int = 0
-        self.chunks: list[Chunk] = []
 
     def chunk_files(self, files_dict) -> None:
         """Chunk files into chunks"""
@@ -39,7 +33,7 @@ class PYChunker(Chunker):
             self._chunk_file()
 
     def _chunk_file(self) -> None:
-        """Slices files into sections based on recovered headers"""
+        """Slices files into sections based on recovered sections"""
 
         self._get_nodes()
 
@@ -144,6 +138,7 @@ class PYChunker(Chunker):
 
     def _create_chunks(self, content: str, start_index: int, hierarchy: str) -> None:
         """Chunking respective to max size chunking parameter."""
+
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
 
         raw_body: str = content
@@ -155,8 +150,6 @@ class PYChunker(Chunker):
             return
 
         formated_chunk: str = context_prefix + body
-
-        # 1. Block fits within max_chunk_size
         if len(formated_chunk) <= self.max_chunk_size:
             self.chunks.append(Chunk(
                 content=formated_chunk,
@@ -168,7 +161,6 @@ class PYChunker(Chunker):
             ))
             return
 
-        # 2. Block exceeds max_chunk_size -> Split into sub-chunks
         paragraphs: deque[str] = deque(body.split("\n\n"))
         par_transition_offset: int = 2
         max_body_char: int = self.max_chunk_size - len(context_prefix)
@@ -214,40 +206,6 @@ class PYChunker(Chunker):
                 ))
 
                 self._index_cursor = chunk_end_offset + par_transition_offset
-
-    def _chunk_large_paragraphs(self, paragraph: str, hierarchy: str | None) -> list[Chunk]:
-        """Splits an oversized code block into sub-chunks"""
-
-        hierarchy_context_prefix: str = f"{hierarchy}" if hierarchy else ""
-        paragraph_part: int = 1
-        chunk_list: list[Chunk] = []
-
-        while paragraph:
-            part_context_prefix: str = (
-                hierarchy_context_prefix + f" (Part {paragraph_part})"
-                if hierarchy else f"Part {paragraph_part}"
-            )
-            complete_context_prefix: str = f"# Context: {part_context_prefix}\n\n"
-            max_paragraph_char: int = self.max_chunk_size - len(complete_context_prefix)
-            paragraph_slice: str = paragraph[:max_paragraph_char]
-            current_chunk: str = complete_context_prefix + paragraph_slice
-            start_index: int = self._index_cursor
-            end_index: int = self._index_cursor + len(paragraph_slice)
-
-            chunk_list.append(Chunk(
-                content=current_chunk,
-                start_index=start_index,
-                end_index=end_index,
-                hierarchy=part_context_prefix.strip(),
-                file_path=self._current_file_path,
-                project=self._project_dir
-            ))
-
-            paragraph = paragraph[max_paragraph_char:]
-            paragraph_part += 1
-            self._index_cursor = end_index
-
-        return chunk_list
 
     def _build_line_offsets(self) -> list[int]:
         offsets = [0]

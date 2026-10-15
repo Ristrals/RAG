@@ -10,14 +10,8 @@ from src.lib import HeaderNode, Chunk
 class MDChunker(Chunker):
     def __init__(self, max_chunk_size: int) -> None:
         super().__init__(max_chunk_size)
-        self._project_dir: str = ""
-        self._files_list: list[Path] = []
-        self._current_file_path: Path = Path()
-        self._file_content: str = ""
         self._headers: list[HeaderNode] = []
-        self._index_cursor: int = 0
         self._in_code_block: bool = False
-        self.chunks: list[Chunk] = []
 
     def chunk_files(self, files_dict) -> None:
         """Chunks files into chunks"""
@@ -169,38 +163,6 @@ class MDChunker(Chunker):
                 ))
 
                 self._index_cursor = chunk_end_offset + par_transition_offset
-
-    def _chunk_large_paragraphs(
-            self, paragraph: str,
-            hierarchy: str | None) -> list[Chunk]:
-
-        hierarchy_context_prefix: str = f"{hierarchy}" if hierarchy else ""
-        paragraph_part: int = 1
-        chunk_list: list[Chunk] = []
-
-        while paragraph:
-            part_context_prefix: str = hierarchy_context_prefix + f" (Part {paragraph_part})" if hierarchy else f"Part {paragraph_part}"  # noqa: E501
-            complete_context_prefix: str = f"# Context: {part_context_prefix}\n\n"
-            max_paragraph_char: int = self.max_chunk_size - len(complete_context_prefix)
-            paragraph_slice: str = paragraph[:max_paragraph_char]
-            current_chunk: str = complete_context_prefix + paragraph_slice
-            start_index: int = self._index_cursor
-            end_index: int = self._index_cursor + len(paragraph_slice)
-
-            chunk_list.append(Chunk(
-                content=current_chunk,
-                start_index=start_index,
-                end_index=end_index,
-                hierarchy=part_context_prefix.strip(),
-                file_path=self._current_file_path,
-                project=self._project_dir
-            ))
-
-            paragraph = paragraph[max_paragraph_char:]
-            paragraph_part += 1
-            self._index_cursor = end_index
-
-        return chunk_list
 
     def _is_header(self, line: str) -> tuple[int, str] | None:
         """Checks if a line is a header and returns its level and title if true"""

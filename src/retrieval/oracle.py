@@ -11,32 +11,26 @@ from src.lib import (
     StuSrchRes,
     MinAns,
     StuSrchResAns,
-    RsrchType
 )
 from src.utils import PathFinder
-from src.retrieval.retriever import Retriever
-
 
 class Oracle:
     def __init__(
-        self, dataset_path: str,
-        save_directory: str,
-        mode: RsrchType,
+        self, path_finder: PathFinder,
+        doc_store: dict[str, dict],
         k: int = 10,
-        model_name: str ="Qwen/Qwen3-0.6B") -> None:
-        self.mode: RsrchType = mode
+        model_name: str ="Qwen/Qwen3-0.6B"
+    ) -> None:
+
+        self.path_finder: PathFinder = path_finder
+        self.doc_store: dict[str, dict] = doc_store
         self.k: int = k
-        self.path_finder: PathFinder = PathFinder(save_directory=Path(save_directory), dataset=Path(dataset_path))
         self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
             device_map="auto"
         )
-        self.doc_store: dict[str, dict]  = {}
-        self._load_doc_store()
-        self.retriever = Retriever(self.path_finder, k, self.doc_store, self.mode)
-        self.research_results: StuSrchRes = self.retriever.research_set()
 
     def answer(self, minimal_srch_res: MinSrchRes) -> MinAns:
         snippets: list[str] = []
@@ -91,10 +85,11 @@ class Oracle:
             answer=answer_text
         )
 
-    def answer_set(self, student_research_result: StuSrchRes) -> StuSrchResAns:
+    def answer_set(self) -> StuSrchResAns:
         answer_list: list[MinAns] = []
+        result = self._load_student_result()
 
-        for minimal_srch_res in student_research_result.search_results:
+        for minimal_srch_res in result.search_results:
             answer_list.append(self.answer(minimal_srch_res))
 
         return StuSrchResAns(
@@ -109,10 +104,8 @@ class Oracle:
             file_text = f.read()
         return file_text[minimal_source.first_character_index:minimal_source.last_character_index]
 
-    def _recover_model_answer(self) -> None:
-        pass
-
-    def _load_doc_store(self) -> None:
-        with open(self.path_finder.processed_dir / "std_index.json", "r", encoding="utf-8") as f:
-            raw_docs = json.load(f)
-            self.doc_store = {doc["id"]: doc for doc in raw_docs}
+    def _load_student_result(self):
+        assert isinstance(self.path_finder.student_search_results_path, Path)
+        with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
+            raw_result = f.read()
+        return StuSrchRes.model_validate_json(raw_result)

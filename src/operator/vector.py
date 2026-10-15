@@ -16,6 +16,7 @@ class VectorOperator:
             collection_name: str = "ragtm_chunks",
             embedding_model: str = "all-MiniLM-L6-v2",
     ) -> None:
+
         self.output_dir: Path = Path()
         self.collection_name = collection_name
         self.embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
