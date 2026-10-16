@@ -1,10 +1,9 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 from pathlib import Path
-from collections import deque
 
 from src.index import Chunker
-from src.lib import HeaderNode, Chunk
+from src.lib import HeaderNode
 
 
 class MDChunker(Chunker):
@@ -13,32 +12,13 @@ class MDChunker(Chunker):
         self._headers: list[HeaderNode] = []
         self._in_code_block: bool = False
 
-    def chunk_files(self, files_dict) -> None:
-        """Chunks files into chunks"""
-
-        self.chunks.clear()
-        for project, files in files_dict.items():
-            self._project_dir = project
-            self._files_list = files
-            self._process_project_files()
-
-    def _process_project_files(self) -> None:
-        """Processes project files"""
-
-        for file in self._files_list:
-            self._index_cursor = 0
-            self._current_file_path = file
-            with file.open(mode="r", encoding="utf-8") as content:
-                self._file_content = content.read()
-            self._chunk_file()
-
     def _chunk_file(self) -> None:
         """Slices files into sections based on recovered headers"""
 
         self._get_headers()
 
         if not self._headers:
-            self._create_chunks(
+            self._chunk_process(
                 content=self._file_content,
                 start_index=0,
                 hierarchy=""
@@ -47,17 +27,17 @@ class MDChunker(Chunker):
 
         if self._headers[0].start_index > 0:
             preamble_content = self._file_content[:self._headers[0].start_index]
-            self._create_chunks(
+            self._chunk_process(
                 content=preamble_content,
                 start_index=0,
                 hierarchy=""
             )
 
-        for i, header in enumerate(self._headers):
+        for idx, header in enumerate(self._headers):
             start_index = header.start_index
-            end_index = self._headers[i + 1].start_index if i + 1 < len(self._headers) else len(self._file_content)
+            end_index = self._headers[idx + 1].start_index if idx + 1 < len(self._headers) else len(self._file_content)
             content = self._file_content[start_index:end_index]
-            self._create_chunks(
+            self._chunk_process(
                 content=content,
                 start_index=start_index,
                 hierarchy=header.hierarchy
@@ -90,11 +70,10 @@ class MDChunker(Chunker):
 
             current_offset += len(line)
 
-    def _create_chunks(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Chunking respective to max size chunking parameter"""
+    def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
+        """Recovers essential elements and proceeds to chunk"""
 
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
-
         lines: list[str] = content.splitlines(keepends=True)
         header_offset: int = len(lines[0]) if lines and self._is_header(lines[0]) else 0
         body_lines: list[str] = lines[1:] if header_offset > 0 else lines
@@ -102,67 +81,10 @@ class MDChunker(Chunker):
         leading_whitespace_offset: int = len(raw_body) - len(raw_body.lstrip())
         body: str = raw_body.strip()
         self._index_cursor = start_index + header_offset + leading_whitespace_offset
-
         if not body:
             return
 
-        formated_chunk: str = context_prefix + body
-        if len(formated_chunk) <= self.max_chunk_size:
-            self.chunks.append(Chunk(
-                content=formated_chunk,
-                start_index=self._index_cursor,
-                end_index=self._index_cursor + len(body),
-                hierarchy=hierarchy,
-                file_path=self._current_file_path,
-                project=self._project_dir
-            ))
-            return
-
-        paragraphs: deque[str] = deque(body.split("\n\n"))
-        par_transition_offset: int = 2
-        max_body_char: int = self.max_chunk_size - len(context_prefix)
-
-        while paragraphs:
-            chunk_paragraphs: list[str] = []
-            current_chunk_len: int = 0
-            chunk_start_offset: int = self._index_cursor
-
-            while paragraphs:
-                next_par = paragraphs[0]
-                p_len = len(next_par)
-                separator_len = par_transition_offset if chunk_paragraphs else 0
-
-                if chunk_paragraphs and (current_chunk_len + separator_len + p_len > max_body_char):
-                    break
-
-                if not chunk_paragraphs and p_len > max_body_char:
-                    large_par = paragraphs.popleft()
-                    large_chunks = self._chunk_large_paragraphs(
-                        paragraph=large_par,
-                        hierarchy=hierarchy
-                    )
-                    self.chunks.extend(large_chunks)
-                    self._index_cursor += par_transition_offset
-                    break
-
-                paragraphs.popleft()
-                chunk_paragraphs.append(next_par)
-                current_chunk_len += separator_len + p_len
-
-            if chunk_paragraphs:
-                chunk_body = "\n\n".join(chunk_paragraphs)
-                chunk_end_offset = chunk_start_offset + len(chunk_body)
-
-                self.chunks.append(Chunk(
-                    content=context_prefix + chunk_body,
-                    start_index=chunk_start_offset,
-                    end_index=chunk_end_offset,
-                    hierarchy=hierarchy,
-                    file_path=self._current_file_path,
-                    project=self._project_dir
-                ))
-
-                self._index_cursor = chunk_end_offset + par_transition_offset
+        self._create_chunks(context_prefix, hierarchy, body)
 
     def _is_header(self, line: str) -> tuple[int, str] | None:
         """Checks if a line is a header and returns its level and title if true"""

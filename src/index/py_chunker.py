@@ -2,10 +2,9 @@
 
 import ast
 from pathlib import Path
-from collections import deque
 
 from src.index import Chunker
-from src.lib import CodeNode, Chunk
+from src.lib import CodeNode
 
 
 class PYChunker(Chunker):
@@ -13,32 +12,13 @@ class PYChunker(Chunker):
         super().__init__(max_chunk_size)
         self._code_nodes: list[CodeNode] = []
 
-    def chunk_files(self, files_dict) -> None:
-        """Chunk files into chunks"""
-
-        self.chunks.clear()
-        for project, files in files_dict.items():
-            self._project_dir = project
-            self._files_list = files
-            self._process_project_files()
-
-    def _process_project_files(self) -> None:
-        """Processes project files"""
-
-        for file in self._files_list:
-            self._index_cursor = 0
-            self._current_file_path = file
-            with file.open(mode="r", encoding="utf-8") as content:
-                self._file_content = content.read()
-            self._chunk_file()
-
     def _chunk_file(self) -> None:
         """Slices files into sections based on recovered sections"""
 
         self._get_nodes()
 
         if not self._code_nodes:
-            self._create_chunks(
+            self._chunk_process(
                 content=self._file_content,
                 start_index=0,
                 hierarchy=""
@@ -47,7 +27,7 @@ class PYChunker(Chunker):
 
         if self._code_nodes[0].start_index > 0:
             preamble_content = self._file_content[:self._code_nodes[0].start_index]
-            self._create_chunks(
+            self._chunk_process(
                 content=preamble_content,
                 start_index=0,
                 hierarchy="Preamble"
@@ -55,7 +35,7 @@ class PYChunker(Chunker):
 
         for node in self._code_nodes:
             content = self._file_content[node.start_index:node.end_index]
-            self._create_chunks(
+            self._chunk_process(
                 content=content,
                 start_index=node.start_index,
                 hierarchy=node.hierarchy
@@ -136,76 +116,18 @@ class PYChunker(Chunker):
                         hierarchy=f"{node.name} > {method.name}"
                     ))
 
-    def _create_chunks(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Chunking respective to max size chunking parameter."""
+    def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
+        """Recovers essential elements and chunk"""
 
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
-
         raw_body: str = content
         leading_whitespace_offset: int = len(raw_body) - len(raw_body.lstrip())
         body: str = raw_body.strip()
         self._index_cursor = start_index + leading_whitespace_offset
-
         if not body:
             return
 
-        formated_chunk: str = context_prefix + body
-        if len(formated_chunk) <= self.max_chunk_size:
-            self.chunks.append(Chunk(
-                content=formated_chunk,
-                start_index=self._index_cursor,
-                end_index=self._index_cursor + len(body),
-                hierarchy=hierarchy,
-                file_path=self._current_file_path,
-                project=self._project_dir
-            ))
-            return
-
-        paragraphs: deque[str] = deque(body.split("\n\n"))
-        par_transition_offset: int = 2
-        max_body_char: int = self.max_chunk_size - len(context_prefix)
-
-        while paragraphs:
-            chunk_paragraphs: list[str] = []
-            current_chunk_len: int = 0
-            chunk_start_offset: int = self._index_cursor
-
-            while paragraphs:
-                next_par = paragraphs[0]
-                p_len = len(next_par)
-                separator_len = par_transition_offset if chunk_paragraphs else 0
-
-                if chunk_paragraphs and (current_chunk_len + separator_len + p_len > max_body_char):
-                    break
-
-                if not chunk_paragraphs and p_len > max_body_char:
-                    large_par = paragraphs.popleft()
-                    large_chunks = self._chunk_large_paragraphs(
-                        paragraph=large_par,
-                        hierarchy=hierarchy
-                    )
-                    self.chunks.extend(large_chunks)
-                    self._index_cursor += par_transition_offset
-                    break
-
-                paragraphs.popleft()
-                chunk_paragraphs.append(next_par)
-                current_chunk_len += separator_len + p_len
-
-            if chunk_paragraphs:
-                chunk_body = "\n\n".join(chunk_paragraphs)
-                chunk_end_offset = chunk_start_offset + len(chunk_body)
-
-                self.chunks.append(Chunk(
-                    content=context_prefix + chunk_body,
-                    start_index=chunk_start_offset,
-                    end_index=chunk_end_offset,
-                    hierarchy=hierarchy,
-                    file_path=self._current_file_path,
-                    project=self._project_dir
-                ))
-
-                self._index_cursor = chunk_end_offset + par_transition_offset
+        self._create_chunks(context_prefix, hierarchy, body)
 
     def _build_line_offsets(self) -> list[int]:
         offsets = [0]

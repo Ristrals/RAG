@@ -8,7 +8,7 @@ from pathlib import Path
 # from src.index.md_chunker import MDChunker as MdC
 # from src.index.py_chunker import PYChunker as PyC
 
-from src.operator import BM25Op, VectorOp
+from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
 from src.lib import DocSrc
 from src.index import Chunker, PYChunker as PyC, MDChunker as MdC
@@ -71,5 +71,5 @@ class Indexer:
                     ext = file_path.suffix.lower()
                     if ext == ".py":
                         self.py_files[project.name].append(file_path)
-                    elif ext == ".md":
+                    elif ext in [".md", ".txt"]:
                         self.md_files[project.name].append(file_path)

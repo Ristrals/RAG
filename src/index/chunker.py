@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from collections import deque
 
 from src.lib import Chunk
 
@@ -18,7 +19,7 @@ class Chunker(ABC):
         self.chunks: list[Chunk] = []
 
     def chunk_files(self, files_dict) -> None:
-        """Chunks files into chunks"""
+        """Chunk files into chunks"""
 
         self.chunks.clear()
         for project, files in files_dict.items():
@@ -38,15 +39,75 @@ class Chunker(ABC):
 
     @abstractmethod
     def _chunk_file(self) -> None:
-        """Slices files into sections based on recovered indexations"""
+        """Slices files into sections based on recovered indexation"""
         pass
 
     @abstractmethod
-    def _create_chunks(self, content: str, start_index: int, hierarchy: str) -> None:
+    def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
         """Chunking respective to max size chunking parameter"""
         pass
 
-    @abstractmethod
+    def _create_chunks(self, context_prefix: str, hierarchy: str, body: str) -> None:
+        """Chunking respective to max size chunking parameter"""
+
+        formated_chunk: str = context_prefix + body
+        if len(formated_chunk) <= self.max_chunk_size:
+            self.chunks.append(Chunk(
+                content=formated_chunk,
+                start_index=self._index_cursor,
+                end_index=self._index_cursor + len(body),
+                hierarchy=hierarchy,
+                file_path=self._current_file_path,
+                project=self._project_dir
+            ))
+            return
+
+        paragraphs: deque[str] = deque(body.split("\n\n"))
+        par_transition_offset: int = 2
+        max_body_char: int = self.max_chunk_size - len(context_prefix)
+
+        while paragraphs:
+            chunk_paragraphs: list[str] = []
+            current_chunk_len: int = 0
+            chunk_start_offset: int = self._index_cursor
+
+            while paragraphs:
+                next_par = paragraphs[0]
+                p_len = len(next_par)
+                separator_len = par_transition_offset if chunk_paragraphs else 0
+
+                if chunk_paragraphs and (current_chunk_len + separator_len + p_len > max_body_char):
+                    break
+
+                if not chunk_paragraphs and p_len > max_body_char:
+                    large_par = paragraphs.popleft()
+                    large_chunks = self._chunk_large_paragraphs(
+                        paragraph=large_par,
+                        hierarchy=hierarchy
+                    )
+                    self.chunks.extend(large_chunks)
+                    self._index_cursor += par_transition_offset
+                    break
+
+                paragraphs.popleft()
+                chunk_paragraphs.append(next_par)
+                current_chunk_len += separator_len + p_len
+
+            if chunk_paragraphs:
+                chunk_body = "\n\n".join(chunk_paragraphs)
+                chunk_end_offset = chunk_start_offset + len(chunk_body)
+
+                self.chunks.append(Chunk(
+                    content=context_prefix + chunk_body,
+                    start_index=chunk_start_offset,
+                    end_index=chunk_end_offset,
+                    hierarchy=hierarchy,
+                    file_path=self._current_file_path,
+                    project=self._project_dir
+                ))
+
+                self._index_cursor = chunk_end_offset + par_transition_offset
+
     def _chunk_large_paragraphs(self, paragraph: str, hierarchy: str | None) -> list[Chunk]:
         """Splits an oversized code block into sub-chunks"""
 
