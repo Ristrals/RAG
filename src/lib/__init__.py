@@ -17,11 +17,15 @@ from src.lib.mandatory_contracts import (
     StudentSearchResults as StuSrchRes,
     StudentSearchResultsAndAnswer as StuSrchResAns, MinimalSource
 )
-from src.lib.contracts import DocumentSource as DocSrc
+from src.lib.contracts import (
+    DocumentSource as DocSrc,
+    GroundTruthQuestion as GrndTruthQ,
+    GroundTruthDataset as GrndTruthDs
+)
 
 __all__ = [
     "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType",
-    "DocSrc",
+    "DocSrc", "GrndTruthQ", "GrndTruthDs",
     "MinSrc",
     "UnansQ",
     "AnsQ",
