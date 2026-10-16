@@ -86,7 +86,7 @@ class VectorOperator:
             collection = self._collection
         else:
             raise RuntimeError(
-                "Vector operator index is not loaded and no index directory provided."
+                "Vector operators index is not loaded and no index directory provided."
             )
 
         results = collection.query(

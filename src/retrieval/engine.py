@@ -3,14 +3,14 @@
 import json
 from pathlib import Path
 
-from src.retrieval import Oracle, Retriever
+from src.retrieval import Oracle, Retriever, Evaluator
 from src.utils import PathFinder
 from src.lib import RsrchType, Tc, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns
 
 
 class Engine:
     def __init__(
-        self, mode: RsrchType,
+        self, mode: RsrchType = RsrchType.LEXICAL,
         user_query: str | None = None,
         save_directory: Path | None = None,
         dataset_path: Path | None = None,
@@ -23,22 +23,26 @@ class Engine:
         self.user_query: str | None = user_query
         self.k = k
         self.model_name = model_name
-        self.path_finder: PathFinder = PathFinder(save_directory, dataset_path, student_search_results_path)
+        self.path_finder: PathFinder = PathFinder(
+            save_directory=save_directory,
+            dataset_path=dataset_path,
+            student_search_results_path=student_search_results_path,)
         self.docsrc_store: dict[str, dict] = {}
         self._load_doc_store()
         self.retriever: Retriever = Retriever(self.path_finder, self.mode, self.docsrc_store, self.k)
         self.oracle: Oracle = Oracle(self.path_finder, self.docsrc_store, self.k)
+        self.evaluator: Evaluator = Evaluator(self.path_finder, self.k)
 
     def run_single_search(self) -> None:
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
-        to_print: str = f"{Tc.ylw}[SINGLE RESEARCH]{Tc.clr}"
+        to_print: str = f"\n{Tc.ylw}[SINGLE RESEARCH]{Tc.clr}\n"
 
         for min_src in results.retrieved_sources:
             to_print += (
                 f"{min_src.file_path} - "
                 f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
-                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]"
+                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
             )
 
         print(to_print)
@@ -48,14 +52,14 @@ class Engine:
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         answer: MinAns = self.oracle.answer(results)
 
-        to_print: str = f"{Tc.org}[SINGLE ANSWER]{Tc.clr}"
+        to_print: str = f"\n{Tc.org}[SINGLE ANSWER]{Tc.clr}\n"
         for min_src in answer.retrieved_sources:
             to_print += (
                 f"{min_src.file_path} - "
                 f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
-                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]"
+                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
             )
-        to_print += f"{Tc.org}LLM Answer{Tc.clr}: {answer.answer}"
+        to_print += f"{Tc.org}LLM Answer{Tc.clr}: {answer.answer}\n"
 
         print(to_print)
 
@@ -76,7 +80,10 @@ class Engine:
             f.write(answer.model_dump_json(indent=4))
         pass
 
+    def evaluate(self) -> None:
+        self.evaluator.run_evaluation()
+
     def _load_doc_store(self) -> None:
         with open(self.path_finder.processed_dir / "std_index.json", "r", encoding="utf-8") as f:
             raw_docs = json.load(f)
-            self.doc_store = {doc["id"]: doc for doc in raw_docs}
+            self.docsrc_store = {doc["id"]: doc for doc in raw_docs}

@@ -11,7 +11,7 @@ from src.lib import (
     StuSrchRes,
     RsrchType
 )
-from src.operator import BM25Op, VectorOp
+from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
 
 
@@ -70,7 +70,7 @@ class Retriever:
     def research_set(self) -> StuSrchRes:
         try:
             assert isinstance(self.path_finder.dataset_path, Path)
-            self.path_finder.validate_file_reading(self.path_finder.dataset_path, "Dataset not found")
+            self.path_finder._validate_file_reading(self.path_finder.dataset_path)
             with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
                 dataset: RagDataset = RagDataset.model_validate(raw_data)
