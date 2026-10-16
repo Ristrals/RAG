@@ -21,6 +21,7 @@ clean:
 
 purge:
 	rm -rf data/processed
+	rm -rf data/output
 
 fclean: clean purge
 	rm -rf .venv

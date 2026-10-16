@@ -7,7 +7,7 @@ class PathFinder:
     _DEFAULT_PROCESSED_DIR = Path("data/processed")
 
     def __init__(
-        self, dataset: Path | None = None,
+        self, dataset_path: Path | None = None,
         save_directory: Path | None = None,
         student_search_results_path: Path | None = None
     ) -> None:
@@ -16,7 +16,7 @@ class PathFinder:
         self.bm25_dir: Path = self.processed_dir / "bm25_index"  # Dedicated to BM25
         self.vector_dir: Path = self.processed_dir / "vector"  # Dedicated to ChromaDB
 
-        self.dataset_path: Path | None = dataset  # Dataset folders
+        self.dataset_path: Path | None = dataset_path  # Dataset folders
         if self.dataset_path:
             self._validate_file_reading(self.dataset_path)
 

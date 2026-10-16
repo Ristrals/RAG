@@ -48,7 +48,7 @@ class Oracle:
             QUESTION:
             {minimal_srch_res.question}
 
-            CODE CONTEXT:
+            CODE CONTEXT FROM MOST RELEVANT TO LESS RELEVANT:
             {combined_snippets}
 
             ANSWER:""").strip()

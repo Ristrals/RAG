@@ -15,6 +15,7 @@ dependencies = [
     "chromadb",
     "fastapi",
     "uvicorn",
+    "accelerate>=1.15.0",
 ]
 
 [build-system]

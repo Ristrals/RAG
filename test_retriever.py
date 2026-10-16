@@ -1,43 +1,46 @@
+# RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
+
+import json
 from pathlib import Path
+from src.retrieval import Retriever
 from src.utils import PathFinder
 from src.lib import RsrchType
-from src.retrieval import Retriever
 
 
-def main():
-    # 1. Initialize your PathFinder (adjust base path if needed)
-    data_dir = Path("data/datasets/question.json")  # Or your specific workspace data directory
-    path_finder = PathFinder(dataset=data_dir)
-
-    # Ensure your dataset path is set in path_finder or point to it directly
-    # path_finder.dataset_path = data_dir / "unanswered_questions.json"
-
+def test_retriever():
     print("=== Testing Retriever Pipeline ===")
 
-    # Test modes to iterate through
+    path_finder = PathFinder()
+
+    # Load the document store index just like the Engine does
+    index_path = path_finder.processed_dir / "std_index.json"
+    if not index_path.exists():
+        print(f"Error: Index file not found at {index_path}. Run indexing first!")
+        return
+
+    with open(index_path, "r", encoding="utf-8") as f:
+        raw_docs = json.load(f)
+        docsrc_store = {doc["id"]: doc for doc in raw_docs}
+
     modes = [RsrchType.LEXICAL, RsrchType.VECTOR, RsrchType.HYBRID]
 
     for mode in modes:
         print(f"\n--- Testing Mode: {mode.value} ---")
         try:
-            # Initialize Retriever
-            retriever = Retriever(path_finder=path_finder, mode=mode, k=5)
+            # Pass all required arguments including docsrc_store
+            retriever = Retriever(path_finder=path_finder, mode=mode, docsrc_store=docsrc_store, k=5)
 
-            # Run batch research on the dataset
-            results = retriever.research_set()
+            # Run a sample test query
+            test_query = "How to configure OpenAI server?"
+            result = retriever.research(question_id=None, question_text=test_query)
 
-            # Validate output contract and print stats
-            print(f"Successfully processed {len(results.search_results)} questions.")
-            if results.search_results:
-                first_res = results.search_results[0]
-                print(f"Sample Question: {first_res.question}")
-                print(f"Retrieved {len(first_res.retrieved_sources)} sources for top-1.")
-                for src in first_res.retrieved_sources:
-                    print(f"  -> {src.file_path} (chars {src.first_character_index}-{src.last_character_index})")
+            print(f"Successfully retrieved {len(result.retrieved_sources)} sources for query.")
+            for src in result.retrieved_sources:
+                print(f" -> {src.file_path} [{src.first_character_index}:{src.last_character_index}]")
 
         except Exception as e:
             print(f"Error encountered in {mode.value} mode: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    test_retriever()
