@@ -22,6 +22,7 @@ class TextColors:
     grn = '\033[92m'
     ylw = '\033[93m'
     cyn = '\033[36m'
+    mag = "\033[35m"
     pnk = '\033[95m'
     org = '\033[38;2;255;165;0m'
     clr = '\033[0m'

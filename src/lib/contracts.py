@@ -42,3 +42,16 @@ class DocumentSource(BaseModel):
             first_character_index=self.first_character_index,
             last_character_index=self.last_character_index,
         )
+
+
+class GroundTruthQuestion(BaseModel):
+    question_id: str
+    question: str
+    answer: str
+    sources: list[MinSrc]
+    difficulty: str
+    is_valid: bool
+
+
+class GroundTruthDataset(BaseModel):
+    rag_questions: list[GroundTruthQuestion]
