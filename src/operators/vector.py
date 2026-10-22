@@ -5,7 +5,9 @@ from typing import Any
 from pathlib import Path
 from chromadb.utils import embedding_functions
 
-from src.lib import DocSrc
+from src.lib import DocSrc, Tc
+from src.utils import PathFinder
+from src.utils.decorators import log_execution_time
 
 
 class VectorOperator:
@@ -13,11 +15,13 @@ class VectorOperator:
 
     def __init__(
             self,
+            path_finder: PathFinder,
+            docsrc_store: dict[str, DocSrc],
             collection_name: str = "ragtm_chunks",
             embedding_model: str = "all-MiniLM-L6-v2",
     ) -> None:
-
-        self.output_dir: Path = Path()
+        self.path_finder: PathFinder = path_finder
+        self.docsrc_store: dict[str, DocSrc] = docsrc_store
         self.collection_name = collection_name
         self.embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedding_model
@@ -25,14 +29,12 @@ class VectorOperator:
         self._client: Any | None = None
         self._collection: chromadb.Collection | None = None
 
-    def _get_collection(self, index_dir: Path | None = None) -> chromadb.Collection:
+    def _get_collection(self) -> chromadb.Collection:
         """Load or initialize ChromaDB persistent client and collection."""
-        target_dir = index_dir if index_dir is not None else self.output_dir
 
-        if self._collection is None or self._client is None or target_dir != self.output_dir:
-            self.output_dir = target_dir
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=str(self.output_dir))
+        if self._collection is None or self._client is None:
+            self.path_finder.vector_dir.mkdir(parents=True, exist_ok=True)
+            self._client = chromadb.PersistentClient(path=str(self.path_finder.vector_dir))
             self._collection = self._client.get_or_create_collection(
                 name=self.collection_name,
                 embedding_function=self.embedding_func,
@@ -42,24 +44,30 @@ class VectorOperator:
         assert self._collection is not None
         return self._collection
 
-    def index(self, documents: list[DocSrc], output_dir: Path) -> None:
-        if not documents:
+    @log_execution_time
+    def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
+        if target_docs is not None and len(target_docs) == 0:
             return
 
-        collection = self._get_collection(output_dir)
+        print(f"{Tc.ylw}[all-MiniLM-L6-v2]{Tc.clr} Semantic indexing . . .")
+        docs_to_index = self.docsrc_store if target_docs is None else target_docs
+        if not docs_to_index:
+            return
 
-        ids = [doc.id for doc in documents]
-        texts = [doc.text for doc in documents]
+        collection: chromadb.Collection = self._get_collection()
+
+        ids = list(docs_to_index.keys())
+        texts = [doc.text for doc in docs_to_index.values()]
         metadatas = [
             {
                 "project": doc.project,
-                "file_path": doc.file_path,
+                "file_path": str(doc.file_path),
                 "hierarchy": doc.hierarchy,
                 "content_hash": doc.content_hash,
                 "first_character_index": doc.first_character_index,
                 "last_character_index": doc.last_character_index,
             }
-            for doc in documents
+            for doc in docs_to_index.values()
         ]
 
         total_chunks = len(ids)
@@ -74,14 +82,14 @@ class VectorOperator:
                 metadatas=batch_metadatas,
             )
 
-    def load(self, index_dir: Path) -> None:
-        self._get_collection(index_dir)
+    def load(self) -> None:
+        self._get_collection()
 
     def search(
-            self, query: str, index_dir: Path | None = None, k: int = 10
+            self, query: str, k: int = 10
     ) -> list[tuple[str, float]]:
-        if index_dir is not None:
-            collection = self._get_collection(index_dir)
+        if self.path_finder.vector_dir is not None:
+            collection = self._get_collection()
         elif self._collection is not None:
             collection = self._collection
         else:
@@ -108,3 +116,19 @@ class VectorOperator:
                 result.append((doc_id, score))
 
         return result
+
+    def delete(self, file_paths: Path | list[Path] | set[Path]) -> None:
+        """Removes all vector embeddings associated with file_path(s) from ChromaDB."""
+        if self._collection is None:
+            self.load()
+        if isinstance(file_paths, Path):
+            paths_to_remove = [str(file_paths)]
+        else:
+            paths_to_remove = [str(p) for p in file_paths]
+        if not paths_to_remove:
+            return
+        assert isinstance(self._collection, chromadb.Collection)
+
+        self._collection.delete(
+            where={"file_path": {"$in": paths_to_remove}}
+        )

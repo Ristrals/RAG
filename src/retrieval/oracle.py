@@ -11,19 +11,20 @@ from src.lib import (
     StuSrchRes,
     MinAns,
     StuSrchResAns,
+    DocSrc
 )
 from src.utils import PathFinder
 
 class Oracle:
     def __init__(
         self, path_finder: PathFinder,
-        doc_store: dict[str, dict],
+        doc_store: dict[str, DocSrc],
         k: int = 10,
         model_name: str ="Qwen/Qwen3-0.6B"
     ) -> None:
 
         self.path_finder: PathFinder = path_finder
-        self.doc_store: dict[str, dict] = doc_store
+        self.doc_store: dict[str, DocSrc] = doc_store
         self.k: int = k
         self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(

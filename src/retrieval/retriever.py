@@ -9,7 +9,8 @@ from src.lib import (
     RagDataset,
     MinSrchRes,
     StuSrchRes,
-    RsrchType
+    RsrchType,
+    DocSrc
 )
 from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
@@ -21,21 +22,21 @@ class Retriever:
     def __init__(
         self, path_finder: PathFinder,
         mode: RsrchType,
-        docsrc_store: dict[str, dict],
+        docsrc_store: dict[str, DocSrc],
         k: int = 10,
     ) -> None:
 
         self.path_finder = path_finder
         self.mode = mode
         self.k = k
-        self.docsrc_store: dict[str, dict] = docsrc_store
+        self.docsrc_store: dict[str, DocSrc] = docsrc_store
 
         if mode == RsrchType.LEXICAL or mode == RsrchType.HYBRID:
-            self.bm25_op = BM25Op()
-            self.bm25_op.load(self.path_finder.bm25_dir)
+            self.bm25_op = BM25Op(self.path_finder, self.docsrc_store)
+            self.bm25_op.load()
         if mode == RsrchType.VECTOR or mode == RsrchType.HYBRID:
-            self.vector_op = VectorOp()
-            self.vector_op.load(self.path_finder.vector_dir)
+            self.vector_op = VectorOp(self.path_finder, self.docsrc_store)
+            self.vector_op.load()
 
     def research(self, question_id: str | None, question_text: str) -> MinSrchRes:
         raw_results: list[tuple[str, float]] = []
@@ -43,21 +44,21 @@ class Retriever:
 
         match self.mode:
             case RsrchType.LEXICAL:
-                raw_results = self.bm25_op.search(question_text, self.path_finder.bm25_dir, k=self.k)
+                raw_results = self.bm25_op.search(question_text, k=self.k)
             case RsrchType.VECTOR:
-                raw_results = self.vector_op.search(question_text, self.path_finder.vector_dir, k=self.k)
+                raw_results = self.vector_op.search(question_text, k=self.k)
             case RsrchType.HYBRID:
-                raw_bm25_res = self.bm25_op.search(question_text, self.path_finder.bm25_dir, k=self.k)
-                raw_vector_res = self.vector_op.search(question_text, self.path_finder.vector_dir, k=self.k)
+                raw_bm25_res = self.bm25_op.search(question_text, k=self.k)
+                raw_vector_res = self.vector_op.search(question_text, k=self.k)
                 raw_results = self._hybrid_research_calculation(raw_bm25_res, raw_vector_res)
 
         for doc_id, score in raw_results:
             doc_data = self.docsrc_store.get(doc_id, {})
             retrieved_sources.append(
                 MinSrc(
-                    file_path=doc_data.get("file_path", ""),
-                    first_character_index=doc_data.get("first_character_index", 0),
-                    last_character_index=doc_data.get("last_character_index", 0)
+                    file_path=doc_data.file_path,
+                    first_character_index=doc_data.first_character_index,
+                    last_character_index=doc_data.last_character_index
                 )
             )
 

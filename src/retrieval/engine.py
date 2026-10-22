@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.retrieval import Oracle, Retriever, Evaluator
 from src.utils import PathFinder
-from src.lib import RsrchType, Tc, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns
+from src.lib import RsrchType, Tc, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns, DocSrc
 
 
 class Engine:
@@ -27,7 +27,7 @@ class Engine:
             save_directory=save_directory,
             dataset_path=dataset_path,
             student_search_results_path=student_search_results_path,)
-        self.docsrc_store: dict[str, dict] = {}
+        self.docsrc_store: dict[str, DocSrc] = {}
         self._load_doc_store()
         self.retriever: Retriever = Retriever(self.path_finder, self.mode, self.docsrc_store, self.k)
         self.oracle: Oracle = Oracle(self.path_finder, self.docsrc_store, self.k)
@@ -84,6 +84,11 @@ class Engine:
         self.evaluator.run_evaluation()
 
     def _load_doc_store(self) -> None:
-        with open(self.path_finder.processed_dir / "std_index.json", "r", encoding="utf-8") as f:
-            raw_docs = json.load(f)
-            self.docsrc_store = {doc["id"]: doc for doc in raw_docs}
+        if self.path_finder.docsrc_path.exists():
+            with open(self.path_finder.docsrc_path, "r", encoding="utf-8") as f:
+                raw_docs: list[dict] = json.load(f)
+
+            self.docsrc_store = {
+                item["id"]: DocSrc.model_validate(item)
+                for item in raw_docs
+            }

@@ -20,12 +20,15 @@ from src.lib.mandatory_contracts import (
 from src.lib.contracts import (
     DocumentSource as DocSrc,
     GroundTruthQuestion as GrndTruthQ,
-    GroundTruthDataset as GrndTruthDs
+    GroundTruthDataset as GrndTruthDs,
+    FileState,
+    ProjectState,
+    RAGState
 )
 
 __all__ = [
     "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType",
-    "DocSrc", "GrndTruthQ", "GrndTruthDs",
+    "DocSrc", "GrndTruthQ", "GrndTruthDs", "FileState", "ProjectState", "RAGState",
     "MinSrc",
     "UnansQ",
     "AnsQ",

@@ -1,13 +1,14 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 from pydantic import BaseModel
+from pathlib import Path
 from hashlib import sha256
 
 from src.lib import MinSrc, Chunk
 
 
 class DocumentSource(BaseModel):
-    """Complete meta-data source models used under the hood"""
+    """Complete metadata source models used under the hood"""
 
     id: str
     text: str
@@ -22,7 +23,6 @@ class DocumentSource(BaseModel):
     def from_chunk(cls, chunk: Chunk):
         raw_id = f"{chunk.project}:{chunk.file_path}:{chunk.start_index}-{chunk.end_index}"
         doc_id = f"{chunk.project}_{sha256(raw_id.encode('utf-8')).hexdigest()[:16]}"
-
         content_hash = sha256(chunk.content.encode("utf-8")).hexdigest()
 
         return cls(
@@ -55,3 +55,53 @@ class GroundTruthQuestion(BaseModel):
 
 class GroundTruthDataset(BaseModel):
     rag_questions: list[GroundTruthQuestion]
+
+
+class FileState(BaseModel):
+    file_path: Path
+    content_hash: str
+
+
+class ProjectState(BaseModel):
+    project: Path
+    files: list[FileState]
+
+
+class RAGState(BaseModel):
+    rag_states: list[ProjectState]
+
+    def get_project_state(self, project_name: Path | str) -> ProjectState | None:
+        target = str(project_name)
+        return next((p for p in self.rag_states if str(p.project) == target or Path(p.project).name == target), None)
+
+    def get_file_state(self, project_name: Path | str, target_path: Path | str) -> FileState | None:
+        """Finds and returns a specific FileState by project name and file path."""
+
+        project = self.get_project_state(project_name)
+        if not project:
+            return None
+        target_str = str(target_path)
+        return next((f for f in project.files if str(f.file_path) == target_str), None)
+
+    def add_file_state(self, project_name: Path, file_state: FileState) -> None:
+        """Adds a FileState to a project, updating it if it already exists or creating the project if missing."""
+
+        project = self.get_project_state(project_name)
+
+        if project:
+            existing_file = next((f for f in project.files if str(f.file_path) == str(file_state.file_path)), None)
+            if existing_file:
+                existing_file.content_hash = file_state.content_hash
+            else:
+                project.files.append(file_state)
+        else:
+            self.rag_states.append(
+                ProjectState(project=project_name, files=[file_state])
+            )
+
+    def remove_file_states(self, files_to_remove: list[Path | str]) -> None:
+        """Removes specified file paths from all project states."""
+
+        target_strs = {str(f) for f in files_to_remove}
+        for proj in self.rag_states:
+            proj.files = [f for f in proj.files if str(f.file_path) not in target_strs]
