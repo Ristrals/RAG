@@ -15,8 +15,8 @@ class PathFinder:
         self.raw_dir: Path = self._DEFAULT_RAW_DIR  # Raw project to chunk
         self.processed_dir: Path = self._DEFAULT_PROCESSED_DIR  # Indexed projects
         self.state_dir: Path = self._DEFAULT_STATE_DIR  # State sync
-        self.bm25_dir: Path = self.processed_dir / "bm25_index"  # Dedicated to BM25
-        self.vector_dir: Path = self.processed_dir / "vector"  # Dedicated to ChromaDB
+        self.bm25_dir: Path = self.processed_dir / "lexical"  # Dedicated to SQLite BM25
+        self.vector_dir: Path = self.processed_dir / "semantic"  # Dedicated to ChromaDB
 
         self.dataset_path: Path | None = dataset_path  # Dataset folders
         if self.dataset_path:
@@ -57,6 +57,10 @@ class PathFinder:
     @property
     def docsrc_path(self) -> Path:
         return self.processed_dir / "std_index.json"
+
+    @property
+    def database_path(self) -> Path:
+        return self.bm25_dir / "bm25.db"
 
     @property
     def link_path(self) -> Path:
