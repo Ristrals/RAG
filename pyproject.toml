@@ -5,8 +5,8 @@ description = "High-performance CPU-only local RAG system"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic>=2.0",
-    "mypy>=1.11",
+    "pydantic",
+    "mypy",
     "fire",
     "torch",
     "transformers",
@@ -15,7 +15,7 @@ dependencies = [
     "chromadb",
     "fastapi",
     "uvicorn",
-    "accelerate>=1.15.0",
+    "accelerate",
 ]
 
 [build-system]

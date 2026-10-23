@@ -10,7 +10,7 @@ from pathlib import Path
 
 from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
-from src.lib import DocSrc
+from src.lib import DocSrc, RsrchType
 from src.index import Chunker, PYChunker as PyC, MDChunker as MdC, Sync
 from src.index import Ie, Iet
 
@@ -18,11 +18,12 @@ from src.index import Ie, Iet
 class Indexer:
     __SUPPORTED_EXT: list[str] = [".py", ".md", ".txt"]
 
-    def __init__(self, max_chunk_size: int = 1000) -> None:
+    def __init__(self, max_chunk_size: int = 1000, mode: RsrchType = RsrchType.LEXICAL) -> None:
         self.chunkers: dict[str, Chunker] = {
             "py": PyC(max_chunk_size),
             "md": MdC(max_chunk_size),
         }
+        self.mode: RsrchType = mode
         self.path_finder = PathFinder()
         self.path_finder.secure_index_directories()
         self.docsrc_store: dict[str, DocSrc] = {}
@@ -60,8 +61,10 @@ class Indexer:
 
         self.synchronizer.export_rag_state()
 
-        self.operators["bm25"].index(new_docsrc_store)
-        self.operators["vector"].index(new_docsrc_store)
+        if self.mode == RsrchType.LEXICAL or self.mode == RsrchType.HYBRID:
+            self.operators["bm25"].index(new_docsrc_store)
+        if self.mode == RsrchType.VECTOR or self.mode == RsrchType.HYBRID:
+            self.operators["vector"].index(new_docsrc_store)
 
     def _load_doc_store(self) -> None:
         if self.path_finder.docsrc_path.exists():

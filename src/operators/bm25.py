@@ -1,8 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+import sqlite3
 import re
-import bm25s
-import json
 from pathlib import Path
 
 from src.lib import DocSrc, Tc
@@ -13,88 +12,99 @@ from src.utils.decorators import log_execution_time
 class BM25Operator:
     def __init__(self, path_finder: PathFinder, docsrc_store: dict[str, DocSrc]) -> None:
         self.path_finder = path_finder
-        self.retriever: bm25s.BM25 | None = None
-        self.doc_ids: list[str] = []
         self.docsrc_store: dict[str, DocSrc] = docsrc_store
-        self._dirty: bool = False
-
-    def tokenize(self, text: str) -> list[str]:
-        return re.findall(r"\w+", text.lower())
+        self._conn: sqlite3.Connection | None = None
+        self.connect()
 
     @log_execution_time
     def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
-        # If no new documents AND no deletions occurred, skip entirely!
-        is_empty_target = target_docs is not None and len(target_docs) == 0
-        if is_empty_target and not self._dirty:
+        """True incremental indexing: upserts only the target_docs in O(delta) time."""
+        if target_docs is not None and len(target_docs) == 0:
             return
 
-        print(f"{Tc.org}[BM25S]{Tc.clr} Lexical indexing . . .")
-
-        # bm25s always indexes the complete active docsrc_store for accurate IDF
-        docs_to_index = self.docsrc_store
+        docs_to_index = self.docsrc_store if target_docs is None else target_docs
         if not docs_to_index:
-            self.doc_ids = []
-            self.retriever = None
-            if self.path_finder.link_path.exists():
-                self.path_finder.link_path.unlink()
-            self._dirty = False
             return
 
-        self.doc_ids = list(docs_to_index.keys())
-        corpus_texts = [self.tokenize(doc.text) for doc in docs_to_index.values()]
+        print(f"{Tc.org}[SQLite FTS5]{Tc.clr} Incremental lexical indexing . . .")
 
-        self.retriever = bm25s.BM25()
-        assert isinstance(self.retriever, bm25s.BM25)
-        self.retriever.index(corpus_texts)
+        # Surgical update: delete existing records for these doc_ids first, then insert
+        doc_ids = list(docs_to_index.keys())
+        placeholders = ",".join(["?"] * len(doc_ids))
 
-        self.path_finder.bm25_dir.mkdir(parents=True, exist_ok=True)
-        self.retriever.save(str(self.path_finder.bm25_dir))
+        assert isinstance(self._conn, sqlite3.Connection)
+        with self._conn:
+            self._conn.execute(f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})", doc_ids)
 
-        with open(self.path_finder.link_path, "w", encoding="utf-8") as file:
-            json.dump(self.doc_ids, file)
+            data_to_insert = [
+                (doc_id, str(doc.file_path), doc.text)
+                for doc_id, doc in docs_to_index.items()
+            ]
+            self._conn.executemany(
+                "INSERT INTO fts_chunks (doc_id, file_path, content) VALUES (?, ?, ?)",
+                data_to_insert
+            )
 
-        self._dirty = False
-
-    def load(self) -> None:
-        self.retriever = bm25s.BM25.load(str(self.path_finder.bm25_dir))
-        with open(self.path_finder.link_path, "r", encoding="utf-8") as file:
-            self.doc_ids = json.load(file)
+    def connect(self) -> None:
+        if self._conn is None:
+            self.path_finder.bm25_dir.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(str(self.path_finder.database_path))
+            assert isinstance(self._conn, sqlite3.Connection)
+            self._conn.execute("""
+                        CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
+                            doc_id UNINDEXED,
+                            file_path UNINDEXED,
+                            content
+                        );
+                    """)
+            self._conn.commit()
 
     def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
-        """Scores query against BM25 index and maps matrix indices back to fingerprints."""
+        """Scores query using SQLite FTS5 built-in BM25 ranking."""
 
-        if self.retriever is None:
-            if self.path_finder.bm25_dir is None:
-                raise RuntimeError("BM25 index is not loaded and no index directory referenced.")
-            self.load()
+        assert isinstance(self._conn, sqlite3.Connection)
+        cursor = self._conn.cursor()
 
-        query_tokens = self.tokenize(query)
-        if not query_tokens:
+        words = re.findall(r"\w+", query.lower())
+        if not words:
             return []
 
-        assert isinstance(self.retriever, bm25s.BM25)
-        results, scores = self.retriever.retrieve([query_tokens], k=min(k, len(self.doc_ids)))
-
-        found = []
-        for doc_idx, score in zip(results[0], scores[0]):
-            fingerprint = self.doc_ids[doc_idx]
-            found.append((fingerprint, float(score)))
-
-        return found
+        safe_query = " OR ".join(words)
+        query_sql = """
+            SELECT doc_id, -bm25(fts_chunks) AS score 
+            FROM fts_chunks 
+            WHERE fts_chunks MATCH ? 
+            ORDER BY score DESC 
+            LIMIT ?
+        """
+        try:
+            cursor.execute(query_sql, (safe_query, k))
+            return [(row[0], float(row[1])) for row in cursor.fetchall()]
+        except sqlite3.OperationalError:
+            print("ERROR RESULT EMPTY")
+            # Handle malformed query strings gracefully
+            return []
 
     def delete(self, file_paths: Path | list[Path] | set[Path]) -> None:
-        """Removes all chunks associated with file_path from the shared docsrc_store and re-indexes."""
-
+        """Surgically deletes chunks associated with file_path(s) in O(delta) time."""
         if isinstance(file_paths, Path):
-            paths_to_remove = {file_paths}
+            paths_to_remove = {str(file_paths)}
         else:
-            paths_to_remove = {Path(p) for p in file_paths}
+            paths_to_remove = {str(p) for p in file_paths}
 
+        if not paths_to_remove:
+            return
+
+        # 1. Prune from memory store
         remaining_docs = {
             doc_id: doc for doc_id, doc in self.docsrc_store.items()
-            if Path(doc.file_path) not in paths_to_remove
+            if str(doc.file_path) not in paths_to_remove
         }
-
         self.docsrc_store.clear()
         self.docsrc_store.update(remaining_docs)
-        self._dirty = True
+
+        # 2. Surgically delete from SQLite FTS5 table instantly
+        placeholders = ",".join(["?"] * len(paths_to_remove))
+        assert isinstance(self._conn, sqlite3.Connection)
+        with self._conn:
+            self._conn.execute(f"DELETE FROM fts_chunks WHERE file_path IN ({placeholders})", list(paths_to_remove))

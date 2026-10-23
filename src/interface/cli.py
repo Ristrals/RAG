@@ -8,11 +8,6 @@ from src.retrieval import Engine
 
 
 class RAGCLI:
-    def index(self, max_chunk_size: int = 2000):
-        """index datasets"""
-
-        indexer = Indexer(max_chunk_size=max_chunk_size)
-        indexer.index()
 
     def evaluate(self, student_search_results_path: str, dataset_path: str):
         """compare results"""
@@ -24,6 +19,12 @@ class RAGCLI:
         engine.evaluate()
 
     # LEXICAL COMMANDS
+    def index(self, max_chunk_size: int = 2000):
+        """index datasets"""
+
+        indexer = Indexer(max_chunk_size=max_chunk_size)
+        indexer.index()
+
     def search(self, query: str, k: int):
         """single search"""
 
@@ -56,13 +57,19 @@ class RAGCLI:
         engine.run_set_answer()
 
     # SEMMANTIC COMMANDS
-    def search_vector(self, query: str, k: int):
+    def index_semantic(self, max_chunk_size: int = 2000):
+        """index datasets"""
+
+        indexer = Indexer(max_chunk_size=max_chunk_size, mode=RsrchType.VECTOR)
+        indexer.index()
+
+    def search_semantic(self, query: str, k: int):
         """single search with hybrid context"""
 
         engine = Engine(mode=RsrchType.VECTOR, user_query=query, k=k)
         engine.run_single_search()
 
-    def search_dataset_vector(self, dataset_path: str, k: int, save_directory: str):
+    def search_dataset_semantic(self, dataset_path: str, k: int, save_directory: str):
         """search dataset with hybrid context"""
 
         engine = Engine(
@@ -73,13 +80,13 @@ class RAGCLI:
         )
         engine.run_set_search()
 
-    def answer_vector(self, query: str, k: int):
+    def answer_semantic(self, query: str, k: int):
         """single answer with hybrid context"""
 
         engine = Engine(mode=RsrchType.VECTOR, user_query=query, k=k)
         engine.run_single_answer()
 
-    def answer_dataser_vector(self, student_search_result_path: str, save_directory: str):
+    def answer_dataser_semantic(self, student_search_result_path: str, save_directory: str):
         """answer dataset with hybrid context"""
 
         engine = Engine(
@@ -90,6 +97,12 @@ class RAGCLI:
         engine.run_set_answer()
 
     # HYBRID COMMANDS
+    def index_hybrid(self, max_chunk_size: int = 2000):
+        """index datasets"""
+
+        indexer = Indexer(max_chunk_size=max_chunk_size, mode=RsrchType.HYBRID)
+        indexer.index()
+
     def search_hybrid(self, query: str, k: int):
         """single search with hybrid context"""
 

@@ -33,7 +33,6 @@ class Retriever:
 
         if mode == RsrchType.LEXICAL or mode == RsrchType.HYBRID:
             self.bm25_op = BM25Op(self.path_finder, self.docsrc_store)
-            self.bm25_op.load()
         if mode == RsrchType.VECTOR or mode == RsrchType.HYBRID:
             self.vector_op = VectorOp(self.path_finder, self.docsrc_store)
             self.vector_op.load()
