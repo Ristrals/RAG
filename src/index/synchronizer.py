@@ -12,15 +12,17 @@ class Synchronizer:
     def __init__(self,
         path_finder: PathFinder,
         document_sources: dict[str, DocSrc],
-        bm25_operator: BM25Op,
-        vector_operator: VectorOp,
+        state_path: Path,
+        operator: BM25Op | VectorOp | None = None
     ) -> None:
         self.path_finder: PathFinder = path_finder
-        self.bm25_op: BM25Op = bm25_operator
-        self.vector_op: VectorOp = vector_operator
+        self.operator: BM25Op | VectorOp | None = operator
         self.docsrc_store: dict[str, DocSrc] = document_sources
+        self.state_path: Path = state_path
+
         self.rag_state: RAGState = RAGState(rag_states=[])
         self.load_rag_state()
+
         self.py_files_to_process: dict[str, list[Path]] = {}
         self.md_files_to_process: dict[str, list[Path]] = {}
         self.remove_from_docsrc: list[Path] = []
@@ -28,13 +30,14 @@ class Synchronizer:
     def load_rag_state(self) -> None:
         """load current rag state or creat a new empty rag state when first use"""
 
-        if self.path_finder.state_path.exists():
-            with open(self.path_finder.state_path, "r", encoding="utf-8") as f:
+        if self.state_path.exists():
+            with open(self.state_path, "r", encoding="utf-8") as f:
                 raw_state = json.load(f)
             self.rag_state = RAGState(**raw_state)
 
     def export_rag_state(self) -> None:
-        with open(self.path_finder.state_path, "w", encoding="utf-8") as f:
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.state_path, "w", encoding="utf-8") as f:
             f.write(self.rag_state.model_dump_json(indent=4))
 
     def check_projects(self) -> None:
@@ -143,14 +146,13 @@ class Synchronizer:
         self.rag_state.add_file_state(project, file_state)
 
     def _remove_files(self, files: list[Path]) -> None:
-        """Removes multiple files in a single batch pass (used by project deletion)."""
         if not files:
             return
         for file in files:
             self.remove_from_docsrc.append(file)
         self._update_std()
-        self.bm25_op.delete(files)
-        self.vector_op.delete(files)
+        if self.operator is not None:
+            self.operator.delete(files)
         self.rag_state.remove_file_states(files)
 
     @staticmethod

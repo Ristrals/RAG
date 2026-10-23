@@ -55,6 +55,14 @@ class PathFinder:
         return self.state_dir / "rag_state.json"
 
     @property
+    def rag_state_bm25_path(self) -> Path:
+        return self.state_dir / "rag_state_bm25.json"
+
+    @property
+    def rag_state_vector_path(self) -> Path:
+        return self.state_dir / "rag_state_vector.json"
+
+    @property
     def docsrc_path(self) -> Path:
         return self.processed_dir / "std_index.json"
 

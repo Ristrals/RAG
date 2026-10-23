@@ -32,10 +32,16 @@ class Indexer:
             "bm25": BM25Op(self.path_finder, self.docsrc_store),
             "vector": VectorOp(self.path_finder, self.docsrc_store),
         }
-        self.synchronizer: Sync = Sync(
+        self.sync_bm25: Sync = Sync(
             self.path_finder,
             self.docsrc_store,
+            self.path_finder.rag_state_bm25_path,
             self.operators["bm25"],
+        )
+        self.sync_vector: Sync = Sync(
+            self.path_finder,
+            self.docsrc_store,
+            self.path_finder.rag_state_vector_path,
             self.operators["vector"],
         )
         self.projects: list[Path] = []
@@ -43,28 +49,34 @@ class Indexer:
         self.md_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
-        self.synchronizer.check_projects()
+        if self.mode == RsrchType.LEXICAL or self.mode == RsrchType.HYBRID:
+            self.sync_bm25.check_projects()
+            self._execute_pipeline(self.sync_bm25, self.operators["bm25"])
 
-        self.chunkers["py"].chunk_files(self.synchronizer.py_files_to_process)
-        self.chunkers["md"].chunk_files(self.synchronizer.md_files_to_process)
+        if self.mode == RsrchType.VECTOR or self.mode == RsrchType.HYBRID:
+            self.sync_vector.check_projects()
+            self._execute_pipeline(self.sync_vector, self.operators["vector"])
 
-        new_docsrc_store: dict[str, DocSrc] = {}
+    def _execute_pipeline(self, synchronizer: Sync, operator: BM25Op | VectorOp) -> None:
+        if any(files for files in synchronizer.py_files_to_process.values()):
+            self.chunkers["py"].chunk_files(synchronizer.py_files_to_process)
 
+        if any(files for files in synchronizer.md_files_to_process.values()):
+            self.chunkers["md"].chunk_files(synchronizer.md_files_to_process)
+
+        new_docs: dict[str, DocSrc] = {}
         for chunker in self.chunkers.values():
             for chunk in chunker.chunks:
                 doc = DocSrc.from_chunk(chunk)
                 self.docsrc_store[doc.id] = doc
-                new_docsrc_store[doc.id] = doc
+                new_docs[doc.id] = doc
+            chunker.chunks.clear()  # reset chunker buffer for the next pass
 
         with open(self.path_finder.docsrc_path, "w", encoding="utf-8") as file:
             file.write(json.dumps([doc.model_dump() for doc in self.docsrc_store.values()], indent=4))
 
-        self.synchronizer.export_rag_state()
-
-        if self.mode == RsrchType.LEXICAL or self.mode == RsrchType.HYBRID:
-            self.operators["bm25"].index(new_docsrc_store)
-        if self.mode == RsrchType.VECTOR or self.mode == RsrchType.HYBRID:
-            self.operators["vector"].index(new_docsrc_store)
+        synchronizer.export_rag_state()
+        operator.index(new_docs)
 
     def _load_doc_store(self) -> None:
         if self.path_finder.docsrc_path.exists():
