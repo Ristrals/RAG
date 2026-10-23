@@ -5,7 +5,8 @@ from src.lib.data_lib import (
     CodeNode,
     HeaderNode,
     Chunk,
-    ResearchType as RsrchType
+    ResearchType as RsrchType,
+    StopWords as Sw
 )
 from src.lib.mandatory_contracts import (
     MinimalSource as MinSrc,
@@ -27,7 +28,7 @@ from src.lib.contracts import (
 )
 
 __all__ = [
-    "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType",
+    "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType", "Sw",
     "DocSrc", "GrndTruthQ", "GrndTruthDs", "FileState", "ProjectState", "RAGState",
     "MinSrc",
     "UnansQ",

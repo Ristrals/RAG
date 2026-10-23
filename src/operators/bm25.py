@@ -4,7 +4,7 @@ import sqlite3
 import re
 from pathlib import Path
 
-from src.lib import DocSrc, Tc
+from src.lib import DocSrc, Tc, Sw
 from src.utils import PathFinder
 from src.utils.decorators import log_execution_time
 
@@ -28,7 +28,6 @@ class BM25Operator:
 
         print(f"{Tc.org}[SQLite FTS5]{Tc.clr} Incremental lexical indexing . . .")
 
-        # Surgical update: delete existing records for these doc_ids first, then insert
         doc_ids = list(docs_to_index.keys())
         placeholders = ",".join(["?"] * len(doc_ids))
 
@@ -37,11 +36,11 @@ class BM25Operator:
             self._conn.execute(f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})", doc_ids)
 
             data_to_insert = [
-                (doc_id, str(doc.file_path), doc.text)
+                (doc_id, str(doc.file_path), doc.hierarchy, doc.text)
                 for doc_id, doc in docs_to_index.items()
             ]
             self._conn.executemany(
-                "INSERT INTO fts_chunks (doc_id, file_path, content) VALUES (?, ?, ?)",
+                "INSERT INTO fts_chunks (doc_id, file_path, hierarchy, content) VALUES (?, ?, ?, ?)",
                 data_to_insert
             )
 
@@ -51,12 +50,14 @@ class BM25Operator:
             self._conn = sqlite3.connect(str(self.path_finder.database_path))
             assert isinstance(self._conn, sqlite3.Connection)
             self._conn.execute("""
-                        CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
-                            doc_id UNINDEXED,
-                            file_path UNINDEXED,
-                            content
-                        );
-                    """)
+                CREATE VIRTUAL TABLE IF NOT EXISTS fts_chunks USING fts5(
+                    doc_id UNINDEXED,
+                    file_path UNINDEXED,
+                    hierarchy,
+                    content,
+                    tokenize='porter'
+                );
+            """)
             self._conn.commit()
 
     def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
@@ -64,25 +65,32 @@ class BM25Operator:
 
         assert isinstance(self._conn, sqlite3.Connection)
         cursor = self._conn.cursor()
-
         words = re.findall(r"\w+", query.lower())
         if not words:
             return []
 
-        safe_query = " OR ".join(words)
+        filtered_words = [w for w in words if w not in Sw.STOP_WORDS]
+        query_words = filtered_words if filtered_words else words
+        safe_query = " OR ".join([f"{word}*" for word in query_words])
+
         query_sql = """
-            SELECT doc_id, -bm25(fts_chunks) AS score 
-            FROM fts_chunks 
-            WHERE fts_chunks MATCH ? 
-            ORDER BY score DESC 
-            LIMIT ?
-        """
+                    SELECT doc_id, -bm25(fts_chunks, 0.0, 0.0, 15.0, 3.0) AS score
+                    FROM fts_chunks
+                    WHERE fts_chunks MATCH ?
+                    ORDER BY score DESC LIMIT ? \
+                    """
         try:
             cursor.execute(query_sql, (safe_query, k))
-            return [(row[0], float(row[1])) for row in cursor.fetchall()]
+            results = [(row[0], float(row[1])) for row in cursor.fetchall()]
+
+            if not results and filtered_words != words:
+                fallback_query = " OR ".join([f"{word}*" for word in words])
+                cursor.execute(query_sql, (fallback_query, k))
+                results = [(row[0], float(row[1])) for row in cursor.fetchall()]
+
+            return results
         except sqlite3.OperationalError:
             print("ERROR RESULT EMPTY")
-            # Handle malformed query strings gracefully
             return []
 
     def delete(self, file_paths: Path | list[Path] | set[Path]) -> None:

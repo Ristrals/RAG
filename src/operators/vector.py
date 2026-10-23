@@ -18,11 +18,12 @@ class VectorOperator:
             path_finder: PathFinder,
             docsrc_store: dict[str, DocSrc],
             collection_name: str = "ragtm_chunks",
-            embedding_model: str = "all-MiniLM-L6-v2",
+            embedding_model: str = "BAAI/bge-small-en-v1.5",
     ) -> None:
         self.path_finder: PathFinder = path_finder
         self.docsrc_store: dict[str, DocSrc] = docsrc_store
         self.collection_name = collection_name
+        self.embedding_model = embedding_model
         self.embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedding_model
         )
@@ -49,7 +50,7 @@ class VectorOperator:
         if target_docs is not None and len(target_docs) == 0:
             return
 
-        print(f"{Tc.ylw}[all-MiniLM-L6-v2]{Tc.clr} Semantic indexing . . .")
+        print(f"{Tc.ylw}[{self. embedding_model}]{Tc.clr} Semantic indexing . . .")
         docs_to_index = self.docsrc_store if target_docs is None else target_docs
         if not docs_to_index:
             return
@@ -57,7 +58,10 @@ class VectorOperator:
         collection: chromadb.Collection = self._get_collection()
 
         ids = list(docs_to_index.keys())
-        texts = [doc.text for doc in docs_to_index.values()]
+        texts = [
+            f"File: {doc.file_path}\nHierarchy: {doc.hierarchy}\n\n{doc.text}"
+            for doc in docs_to_index.values()
+        ]
         metadatas = [
             {
                 "project": doc.project,
