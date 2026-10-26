@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from tqdm import tqdm
 from pathlib import Path
 
 from src.lib import (
@@ -10,7 +11,8 @@ from src.lib import (
     MinSrchRes,
     StuSrchRes,
     RsrchType,
-    DocSrc
+    DocSrc,
+    Tc
 )
 from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
@@ -70,7 +72,7 @@ class Retriever:
     def research_set(self) -> StuSrchRes:
         try:
             assert isinstance(self.path_finder.dataset_path, Path)
-            self.path_finder._validate_file_reading(self.path_finder.dataset_path)
+            self.path_finder.validate_file_reading(self.path_finder.dataset_path)
             with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
                 raw_data = json.load(f)
                 dataset: RagDataset = RagDataset.model_validate(raw_data)
@@ -78,7 +80,11 @@ class Retriever:
             raise e # TOBBE HANDLED TO VERIFY PROPER JSON SCHEMA
 
         student_search_results: list[MinSrchRes] = []
-        for query in dataset.rag_questions:
+        for query in tqdm(
+                dataset.rag_questions,
+                desc=f"[{Tc.mag}Processing dataset queries{Tc.clr}]",
+                unit="query",
+                colour="magenta"):
             student_search_results.append(self.research(query.question_id, query.question))
         return StuSrchRes(
             search_results=student_search_results,

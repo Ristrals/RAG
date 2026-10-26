@@ -24,6 +24,10 @@ purge:
 	rm -rf data/output
 	rm -rf data/state
 
+purge_lexical:
+	rm -rf data/processed/lexical
+	rm -rf data/state/rag_state_bm25.json
+
 fclean: clean purge
 	rm -rf .venv
 	rm -rf .cache/uv
@@ -42,3 +46,7 @@ f8:
 lint-strict:
 	flake8
 	mypy . --strict
+
+docs:
+	uv run python3 src search_dataset "data/datasets/UnansweredQuestions/dataset_docs_private.json" 5 "data/output/UnansweredQuestion"
+	uv run python3 src evaluate data/output/UnansweredQuestion/dataset_docs_private.json data/datasets/AnsweredQuestions/dataset_docs_private.json

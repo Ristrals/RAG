@@ -1,7 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 import torch
-import json
+from tqdm import tqdm
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizerFast
 
@@ -11,7 +11,8 @@ from src.lib import (
     StuSrchRes,
     MinAns,
     StuSrchResAns,
-    DocSrc
+    DocSrc,
+    Tc
 )
 from src.utils import PathFinder
 
@@ -90,9 +91,15 @@ class Oracle:
         answer_list: list[MinAns] = []
         result = self._load_student_result()
 
-        for minimal_srch_res in result.search_results:
+        for minimal_srch_res in tqdm(
+                result.search_results,
+                desc=f"[{Tc.mag}[Processing dataset answers]{Tc.clr}]",
+                unit="query",
+                colour="magenta"):
+        # for minimal_srch_res in result.search_results:
             answer_list.append(self.answer(minimal_srch_res))
-
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
         return StuSrchResAns(
             search_results=answer_list,
             k=self.k

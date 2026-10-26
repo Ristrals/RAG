@@ -47,7 +47,7 @@ class Evaluator:
                     case "valid":
                         print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> Overlap confirmed [{Tc.grn}VALIDATED{Tc.clr}]")
                     case "no_overlap":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> No index overlap [{Tc.red}FAILED{Tc.clr}]")
+                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> No index overlap [{Tc.org}FAILED{Tc.clr}]")
                     case "no_match":
                         print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> No matching source file [{Tc.red}FAILED{Tc.clr}]")
             else:

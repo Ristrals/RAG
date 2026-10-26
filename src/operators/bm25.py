@@ -2,6 +2,7 @@
 
 import sqlite3
 import re
+from tqdm import tqdm
 from pathlib import Path
 
 from src.lib import DocSrc, Tc, Sw
@@ -19,30 +20,41 @@ class BM25Operator:
     @log_execution_time
     def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
         """True incremental indexing: upserts only the target_docs in O(delta) time."""
+
         if target_docs is not None and len(target_docs) == 0:
             return
 
         docs_to_index = self.docsrc_store if target_docs is None else target_docs
         if not docs_to_index:
             return
-
-        print(f"{Tc.org}[SQLite FTS5]{Tc.clr} Incremental lexical indexing . . .")
-
         doc_ids = list(docs_to_index.keys())
-        placeholders = ",".join(["?"] * len(doc_ids))
+        batch_size = 500
+        total_docs = len(doc_ids)
 
         assert isinstance(self._conn, sqlite3.Connection)
         with self._conn:
-            self._conn.execute(f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})", doc_ids)
-
+            for i in range(0, total_docs, batch_size):
+                batch_ids = doc_ids[i : i + batch_size]
+                placeholders = ",".join(["?"] * len(batch_ids))
+                self._conn.execute(
+                f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})",
+                    batch_ids)
             data_to_insert = [
                 (doc_id, str(doc.file_path), doc.hierarchy, doc.text)
                 for doc_id, doc in docs_to_index.items()
             ]
-            self._conn.executemany(
-                "INSERT INTO fts_chunks (doc_id, file_path, hierarchy, content) VALUES (?, ?, ?, ?)",
-                data_to_insert
-            )
+            with tqdm(
+                    total=total_docs,
+                    desc=f"{Tc.org}[SQLite FTS5]{Tc.clr} Lexical Indexing",
+                    unit="doc",
+                    colour="yellow") as pbar:
+                for i in range(0, total_docs, batch_size):
+                    batch_data = data_to_insert[ i : i + batch_size]
+                    self._conn.executemany(
+                        "INSERT INTO fts_chunks (doc_id, file_path, hierarchy, content) VALUES (?, ?, ?, ?)",
+                        batch_data
+                    )
+                    pbar.update(len(batch_data))
 
     def connect(self) -> None:
         if self._conn is None:
@@ -55,7 +67,7 @@ class BM25Operator:
                     file_path UNINDEXED,
                     hierarchy,
                     content,
-                    tokenize='porter'
+                    tokenize='unicode61 remove_diacritics 1'
                 );
             """)
             self._conn.commit()

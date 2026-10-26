@@ -20,11 +20,11 @@ class PathFinder:
 
         self.dataset_path: Path | None = dataset_path  # Dataset folders
         if self.dataset_path:
-            self._validate_file_reading(self.dataset_path)
+            self.validate_file_reading(self.dataset_path)
 
         self.student_search_results_path: Path | None = student_search_results_path  # Answer results
         if self.student_search_results_path:
-            self._validate_file_reading(self.student_search_results_path)
+            self.validate_file_reading(self.student_search_results_path)
 
         self.save_dir: Path | None = save_directory  # Research results
         if self.save_dir:
@@ -42,7 +42,7 @@ class PathFinder:
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def _validate_file_reading(path: Path) -> None:
+    def validate_file_reading(path: Path) -> None:
         """Raises a FileNotFoundError if an expected input path does not exist."""
         try:
             if not path.exists():

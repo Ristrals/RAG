@@ -1,6 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 import chromadb
+from tqdm import tqdm
 from typing import Any
 from pathlib import Path
 from chromadb.utils import embedding_functions
@@ -11,7 +12,7 @@ from src.utils.decorators import log_execution_time
 
 
 class VectorOperator:
-    _BATCH_SIZE = 5000
+    _BATCH_SIZE = 512
 
     def __init__(
             self,
@@ -47,10 +48,10 @@ class VectorOperator:
 
     @log_execution_time
     def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
+
         if target_docs is not None and len(target_docs) == 0:
             return
 
-        print(f"{Tc.ylw}[{self. embedding_model}]{Tc.clr} Semantic indexing . . .")
         docs_to_index = self.docsrc_store if target_docs is None else target_docs
         if not docs_to_index:
             return
@@ -75,16 +76,21 @@ class VectorOperator:
         ]
 
         total_chunks = len(ids)
-        for i in range(0, total_chunks, self._BATCH_SIZE):
-            batch_ids = ids[i: i + self._BATCH_SIZE]
-            batch_documents = texts[i: i + self._BATCH_SIZE]
-            batch_metadatas = metadatas[i: i + self._BATCH_SIZE]
+        with tqdm(total=total_chunks,
+                  desc=f"{Tc.ylw}[{self.embedding_model}]{Tc.clr} Semantic Indexing",
+                  unit="chunk",
+                  colour="yellow") as pbar:
+            for i in range(0, total_chunks, self._BATCH_SIZE):
+                batch_ids = ids[i : i + self._BATCH_SIZE]
+                batch_documents = texts[i : i + self._BATCH_SIZE]
+                batch_metadatas = metadatas[i : i + self._BATCH_SIZE]
 
-            collection.upsert(
-                ids=batch_ids,
-                documents=batch_documents,
-                metadatas=batch_metadatas,
-            )
+                collection.upsert(
+                    ids=batch_ids,
+                    documents=batch_documents,
+                    metadatas=batch_metadatas,
+                )
+                pbar.update(len(batch_ids))
 
     def load(self) -> None:
         self._get_collection()

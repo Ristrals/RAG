@@ -86,7 +86,7 @@ class RAGCLI:
         engine = Engine(mode=RsrchType.VECTOR, user_query=query, k=k)
         engine.run_single_answer()
 
-    def answer_dataser_semantic(self, student_search_result_path: str, save_directory: str):
+    def answer_dataset_semantic(self, student_search_result_path: str, save_directory: str):
         """answer dataset with hybrid context"""
 
         engine = Engine(
@@ -126,7 +126,7 @@ class RAGCLI:
         engine = Engine(mode=RsrchType.HYBRID, user_query=query, k=k)
         engine.run_single_answer()
 
-    def answer_dataser_hybrid(self, student_search_result_path: str, save_directory: str):
+    def answer_dataset_hybrid(self, student_search_result_path: str, save_directory: str):
         """answer dataset with hybrid context"""
 
         engine = Engine(
