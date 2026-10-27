@@ -128,3 +128,59 @@ class BM25Operator:
         assert isinstance(self._conn, sqlite3.Connection)
         with self._conn:
             self._conn.execute(f"DELETE FROM fts_chunks WHERE file_path IN ({placeholders})", list(paths_to_remove))
+
+        def debug_inspect_tokens(self, prefix: str = "") -> None:
+            """Inspects tokens stored in the FTS5 index to verify tokenization behavior."""
+            assert isinstance(self._conn, sqlite3.Connection)
+            cursor = self._conn.cursor()
+
+            # Create an auxiliary vocab table mapping to your fts_chunks table
+            cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts_vocab USING fts5vocab('fts_chunks', 'row');")
+
+            query = "SELECT term, doc/cnt FROM fts_vocab"
+            params = ()
+            if prefix:
+                query += " WHERE term LIKE ?"
+                params = (f"{prefix}%",)
+
+            cursor.execute(query, params)
+            print(f"{'TERM':<30} | {'DOCUMENT FREQUENCY'}")
+            print("-" * 50)
+            for row in cursor.fetchall():
+                print(f"{row[0]:<30} | {row[1]}")
+
+            # Clean up vocab table
+            cursor.execute("DROP TABLE IF EXISTS fts_vocab;")
+
+
+    if __name__ == "__main__":
+        path_finder = PathFinder()
+        with open(path_finder.docsrc_path, "r", encoding="utf-8") as f:
+            raw_docs: list[dict] = json.load(f)
+
+        docsrc_store = {
+            item["id"]: DocSrc.model_validate(item)
+            for item in raw_docs
+        }
+        bm25_op = BM25Operator(path_finder, docsrc_store)
+
+        assert isinstance(bm25_op._conn, sqlite3.Connection)
+        cursor = bm25_op._conn.cursor()
+
+        # Drop an actual question string from one of your "No index overlap" failures here
+        failing_query = "What modalities does the Qwen2.5-Omni model support in vLLM?"
+        words = re.findall(r"\w+", failing_query.lower())
+        filtered_words = [w for w in words if w not in Sw.STOP_WORDS]
+
+        print(f"\nAuditing tokens for query: '{failing_query}'\n")
+        cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts_vocab USING fts5vocab('fts_chunks', 'row');")
+
+        for word in filtered_words:
+            cursor.execute("SELECT term, cnt FROM fts_vocab WHERE term = ?", (word,))
+            row = cursor.fetchone()
+            if row:
+                print(f"  [FOUND]    '{row[0]}' (appears in {row[1]} chunks)")
+            else:
+                print(f"  [MISSING]  '{word}' -> ZERO match in index! (This is why it failed)")
+
+        cursor.execute("DROP TABLE IF EXISTS fts_vocab;")
