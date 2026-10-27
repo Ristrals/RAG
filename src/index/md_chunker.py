@@ -13,56 +13,35 @@ class MDChunker(Chunker):
         self._in_code_block: bool = False
 
     def _chunk_file(self) -> None:
-        """Slices files into sections and merges adjacent sections up to max_chunk_size."""
+        """Slices files into sections based on recovered headers"""
 
         self._get_headers()
-        sections = []
 
-        # 1. Collect Preamble if it exists
-        if self._headers and self._headers[0].start_index > 0:
+        if not self._headers:
+            self._chunk_process(
+                content=self._file_content,
+                start_index=0,
+                hierarchy=""
+            )
+            return
+
+        if self._headers[0].start_index > 0:
             preamble_content = self._file_content[:self._headers[0].start_index]
-            if preamble_content.strip():
-                sections.append((0, "", preamble_content))
+            self._chunk_process(
+                content=preamble_content,
+                start_index=0,
+                hierarchy=""
+            )
 
-        # 2. Collect all header sections
         for idx, header in enumerate(self._headers):
             start_index = header.start_index
             end_index = self._headers[idx + 1].start_index if idx + 1 < len(self._headers) else len(self._file_content)
             content = self._file_content[start_index:end_index]
-            sections.append((start_index, header.hierarchy, content))
-
-        if not sections:
-            return
-
-        # 3. Rolling Merge Buffer Logic
-        buffer_hierarchy = ""
-        buffer_content: list[str] = []
-        buffer_start_index = sections[0][0]
-
-        for start_index, hierarchy, content in sections:
-            # Determine the context prefix for this candidate section
-            prefix = f"# Context: {hierarchy}\n\n" if hierarchy else ""
-
-            # Calculate total size if we append this section to the current buffer
-            current_body = "".join(buffer_content)
-            candidate_body = current_body + content
-            candidate_total_len = len(prefix) + len(candidate_body)
-
-            # If the buffer is not empty and adding this section exceeds max_chunk_size, flush first
-            if buffer_content and candidate_total_len > self.max_chunk_size:
-                self._flush_buffer(buffer_hierarchy, buffer_content, buffer_start_index)
-                buffer_hierarchy = hierarchy
-                buffer_content = [content]
-                buffer_start_index = start_index
-            else:
-                if not buffer_content:
-                    buffer_hierarchy = hierarchy
-                    buffer_start_index = start_index
-                buffer_content.append(content)
-
-        # Flush any remaining content in the buffer
-        if buffer_content:
-            self._flush_buffer(buffer_hierarchy, buffer_content, buffer_start_index)
+            self._chunk_process(
+                content=content,
+                start_index=start_index,
+                hierarchy=header.hierarchy
+            )
 
     def _get_headers(self) -> None:
         """Recovers all MD file headers"""
@@ -125,24 +104,6 @@ class MDChunker(Chunker):
         title = remainder.strip()
 
         return level, title
-
-    def _flush_buffer(self, hierarchy: str, content_parts: list[str], start_index: int) -> None:
-        """Helper to process and create chunks from accumulated buffer parts."""
-        combined_content = "".join(content_parts)
-        context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
-
-        lines: list[str] = combined_content.splitlines(keepends=True)
-        header_offset: int = len(lines[0]) if lines and self._is_header(lines[0]) else 0
-        body_lines: list[str] = lines[1:] if header_offset > 0 else lines
-        raw_body: str = "".join(body_lines)
-        leading_whitespace_offset: int = len(raw_body) - len(raw_body.lstrip())
-        body: str = raw_body.strip()
-
-        self._index_cursor = start_index + header_offset + leading_whitespace_offset
-        if not body:
-            return
-
-        self._create_chunks(context_prefix, hierarchy, body)
 
 
 if __name__ == "__main__":
