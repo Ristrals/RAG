@@ -45,13 +45,13 @@ class Evaluator:
             if ground_truth:
                 match self._evaluate(question, ground_truth):
                     case "valid":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> Overlap confirmed [{Tc.grn}VALIDATED{Tc.clr}]")
+                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> Overlap confirmed [{Tc.grn}VALIDATED{Tc.clr}]")
                     case "no_overlap":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> No index overlap [{Tc.org}FAILED{Tc.clr}]")
+                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> No index overlap [{Tc.org}FAILED{Tc.clr}]")
                     case "no_match":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> No matching source file [{Tc.red}FAILED{Tc.clr}]")
+                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> No matching source file [{Tc.red}FAILED{Tc.clr}]")
             else:
-                print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> Matching question ID not found [{Tc.red}MISSING{Tc.clr}]")
+                print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> Matching question ID not found [{Tc.red}MISSING{Tc.clr}]")
 
         self._calculate_accuracy()
 
@@ -72,7 +72,9 @@ class Evaluator:
                     self.valid_response += 1
                     return "valid"
                 else:
+                    print(f"  [DEBUG NO_OVERLAP] | File: {result.file_path} | Start: {result.last_character_index} - End: {result.last_character_index}")
                     return "no_overlap"
+        print(f"  [DEBUG NO_MATCH] QID: {question.question_id} | Expected file: {valid_minimal_source.file_path}")
         return "no_match"
 
     def _ranges_overlap(self, start1: int, end1: int, start2: int, end2: int) -> bool:

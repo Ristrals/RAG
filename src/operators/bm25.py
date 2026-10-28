@@ -2,6 +2,7 @@
 
 import sqlite3
 import re
+import json
 from tqdm import tqdm
 from pathlib import Path
 
@@ -77,7 +78,9 @@ class BM25Operator:
 
         assert isinstance(self._conn, sqlite3.Connection)
         cursor = self._conn.cursor()
-        words = re.findall(r"\w+", query.lower())
+        normalized_query = query.lower().replace("_", " ").replace("-", " ").replace(".", " ")
+        words = re.findall(r"\w+", normalized_query)
+        # words = re.findall(r"\w+", query.lower())
         if not words:
             return []
 
@@ -86,7 +89,7 @@ class BM25Operator:
         safe_query = " OR ".join([f"{word}*" for word in query_words])
 
         query_sql = """
-                    SELECT doc_id, -bm25(fts_chunks, 0.0, 0.0, 15.0, 3.0) AS score
+                    SELECT doc_id, -bm25(fts_chunks, 0.0, 0.0, 10.0, 5.0) AS score
                     FROM fts_chunks
                     WHERE fts_chunks MATCH ?
                     ORDER BY score DESC LIMIT ? \
@@ -153,34 +156,34 @@ class BM25Operator:
             cursor.execute("DROP TABLE IF EXISTS fts_vocab;")
 
 
-    if __name__ == "__main__":
-        path_finder = PathFinder()
-        with open(path_finder.docsrc_path, "r", encoding="utf-8") as f:
-            raw_docs: list[dict] = json.load(f)
+if __name__ == "__main__":
+    path_finder = PathFinder()
+    with open(path_finder.docsrc_path, "r", encoding="utf-8") as f:
+        raw_docs: list[dict] = json.load(f)
 
-        docsrc_store = {
-            item["id"]: DocSrc.model_validate(item)
-            for item in raw_docs
-        }
-        bm25_op = BM25Operator(path_finder, docsrc_store)
+    docsrc_store = {
+        item["id"]: DocSrc.model_validate(item)
+        for item in raw_docs
+    }
+    bm25_op = BM25Operator(path_finder, docsrc_store)
 
-        assert isinstance(bm25_op._conn, sqlite3.Connection)
-        cursor = bm25_op._conn.cursor()
+    assert isinstance(bm25_op._conn, sqlite3.Connection)
+    cursor = bm25_op._conn.cursor()
 
-        # Drop an actual question string from one of your "No index overlap" failures here
-        failing_query = "What modalities does the Qwen2.5-Omni model support in vLLM?"
-        words = re.findall(r"\w+", failing_query.lower())
-        filtered_words = [w for w in words if w not in Sw.STOP_WORDS]
+    # Drop an actual question string from one of your "No index overlap" failures here
+    failing_query = "What is the CLI command for starting a chat interface in vLLM?"
+    words = re.findall(r"\w+", failing_query.lower())
+    filtered_words = [w for w in words if w not in Sw.STOP_WORDS]
 
-        print(f"\nAuditing tokens for query: '{failing_query}'\n")
-        cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts_vocab USING fts5vocab('fts_chunks', 'row');")
+    print(f"\nAuditing tokens for query: '{failing_query}'\n")
+    cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts_vocab USING fts5vocab('fts_chunks', 'row');")
 
-        for word in filtered_words:
-            cursor.execute("SELECT term, cnt FROM fts_vocab WHERE term = ?", (word,))
-            row = cursor.fetchone()
-            if row:
-                print(f"  [FOUND]    '{row[0]}' (appears in {row[1]} chunks)")
-            else:
-                print(f"  [MISSING]  '{word}' -> ZERO match in index! (This is why it failed)")
+    for word in filtered_words:
+        cursor.execute("SELECT term, cnt FROM fts_vocab WHERE term = ?", (word,))
+        row = cursor.fetchone()
+        if row:
+            print(f"  [FOUND]    '{row[0]}' (appears in {row[1]} chunks)")
+        else:
+            print(f"  [MISSING]  '{word}' -> ZERO match in index! (This is why it failed)")
 
-        cursor.execute("DROP TABLE IF EXISTS fts_vocab;")
+    cursor.execute("DROP TABLE IF EXISTS fts_vocab;")

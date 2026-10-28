@@ -25,6 +25,7 @@ class Synchronizer:
 
         self.py_files_to_process: dict[str, list[Path]] = {}
         self.md_files_to_process: dict[str, list[Path]] = {}
+        self.txt_files_to_process: dict[str, list[Path]] = {}
         self.remove_from_docsrc: list[Path] = []
 
     def load_rag_state(self) -> None:
@@ -71,13 +72,15 @@ class Synchronizer:
     def _add_project(self, project_to_add: Path) -> None:
         self.py_files_to_process[project_to_add.name] = []
         self.md_files_to_process[project_to_add.name] = []
+        self.txt_files_to_process[project_to_add.name] = []
         filestate_list: list[FileState] = []
 
-        py_f, md_f = self._recover_project_files(project_to_add)
+        py_f, md_f, txt_f = self._recover_project_files(project_to_add)
         self.py_files_to_process[project_to_add.name].extend(py_f)
         self.md_files_to_process[project_to_add.name].extend(md_f)
+        self.txt_files_to_process[project_to_add.name].extend(txt_f)
 
-        all_files: list[Path] = py_f + md_f
+        all_files: list[Path] = py_f + md_f + txt_f
         for file_path in all_files:
             self._add_file(project_to_add, file_path)
 
@@ -96,10 +99,10 @@ class Synchronizer:
         if not rag_project:
             return
         rag_project_files: dict[Path, str] = {f.file_path: f.content_hash for f in rag_project.files}
-        py_f, md_f = self._recover_project_files(project_to_sync)
+        py_f, md_f, txt_f = self._recover_project_files(project_to_sync)
 
         rag_files_set: set[Path] = set(rag_project_files.keys())
-        current_files_set: set[Path] = set(py_f + md_f)
+        current_files_set: set[Path] = set(py_f + md_f + txt_f)
 
         file_to_remove: set[Path] = rag_files_set.difference(current_files_set)
         file_to_add: set[Path] = current_files_set.difference(rag_files_set)
@@ -133,7 +136,8 @@ class Synchronizer:
             self.md_files_to_process[project.name] = []
         match file.suffix.lower():
             case ".py": self.py_files_to_process[project.name].append(file)
-            case ".md" | ".txt": self.md_files_to_process[project.name].append(file)
+            case ".md": self.md_files_to_process[project.name].append(file)
+            case ".txt": self.txt_files_to_process[project.name].append(file)
 
         # RAG State update
         with open(file, "r", encoding="utf-8") as f:
@@ -156,17 +160,20 @@ class Synchronizer:
         self.rag_state.remove_file_states(files)
 
     @staticmethod
-    def _recover_project_files(project_path: Path) -> tuple[list[Path], list[Path]]:
+    def _recover_project_files(project_path: Path) -> tuple[list[Path], list[Path], list[Path]]:
         py_files: list[Path] = []
         md_files: list[Path] = []
+        txt_files: list[Path] = []
         for file_path in project_path.rglob("*"):
             if file_path.is_file() and not file_path.name.startswith("."):
                 ext = file_path.suffix.lower()
                 if ext == ".py":
                     py_files.append(file_path)
-                elif ext in [".md", ".txt"]:
+                elif ext == ".md":
                     md_files.append(file_path)
-        return py_files, md_files
+                elif ext == ".txt":
+                    txt_files.append(file_path)
+        return py_files, md_files, txt_files
 
     def _update_std(self) -> None:
         paths_to_remove = {Path(p) for p in self.remove_from_docsrc}

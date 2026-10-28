@@ -48,7 +48,7 @@ class Chunker(ABC):
         pass
 
     def _create_chunks(self, context_prefix: str, hierarchy: str, body: str) -> None:
-        """Chunking respective to max size chunking parameter"""
+        """Chunking respective to max size chunking parameter with precise offset tracking"""
 
         formated_chunk: str = context_prefix + body
         if len(formated_chunk) <= self.max_chunk_size:
@@ -60,21 +60,23 @@ class Chunker(ABC):
                 file_path=self._current_file_path,
                 project=self._project_dir
             ))
+            # Advance cursor past this body section plus any trailing whitespace/newlines
+            self._index_cursor += len(body)
             return
 
         paragraphs: deque[str] = deque(body.split("\n\n"))
-        par_transition_offset: int = 2
         max_body_char: int = self.max_chunk_size - len(context_prefix)
+        current_body_cursor: int = self._index_cursor
 
         while paragraphs:
             chunk_paragraphs: list[str] = []
             current_chunk_len: int = 0
-            chunk_start_offset: int = self._index_cursor
+            chunk_start_offset: int = current_body_cursor
 
             while paragraphs:
                 next_par = paragraphs[0]
                 p_len = len(next_par)
-                separator_len = par_transition_offset if chunk_paragraphs else 0
+                separator_len = 2 if chunk_paragraphs else 0  # "\n\n" separator length
 
                 if chunk_paragraphs and (current_chunk_len + separator_len + p_len > max_body_char):
                     break
@@ -86,7 +88,7 @@ class Chunker(ABC):
                         hierarchy=hierarchy
                     )
                     self.chunks.extend(large_chunks)
-                    self._index_cursor += par_transition_offset
+                    current_body_cursor += len(large_par) + 2
                     break
 
                 paragraphs.popleft()
@@ -106,7 +108,10 @@ class Chunker(ABC):
                     project=self._project_dir
                 ))
 
-                self._index_cursor = chunk_end_offset + par_transition_offset
+                # Advance body cursor by the exact length of the chunk body plus paragraph spacing
+                current_body_cursor = chunk_end_offset + 2
+
+        self._index_cursor = current_body_cursor
 
     def _chunk_large_paragraphs(self, paragraph: str, hierarchy: str | None) -> list[Chunk]:
         """Splits an oversized code block into sub-chunks"""

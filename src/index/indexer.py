@@ -11,7 +11,7 @@ from pathlib import Path
 from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
 from src.lib import DocSrc, RsrchType
-from src.index import Chunker, PYChunker as PyC, MDChunker as MdC, Sync
+from src.index import Chunker, PyC, MdC, TxtC, Sync
 from src.index import Ie, Iet
 
 
@@ -22,6 +22,7 @@ class Indexer:
         self.chunkers: dict[str, Chunker] = {
             "py": PyC(max_chunk_size),
             "md": MdC(max_chunk_size),
+            "txt": TxtC(max_chunk_size),
         }
         self.mode: RsrchType = mode
         self.path_finder = PathFinder()
@@ -47,6 +48,7 @@ class Indexer:
         self.projects: list[Path] = []
         self.py_files: dict[str, list[Path]] = {}
         self.md_files: dict[str, list[Path]] = {}
+        self.txt_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
         if self.mode == RsrchType.LEXICAL or self.mode == RsrchType.HYBRID:
@@ -60,9 +62,10 @@ class Indexer:
     def _execute_pipeline(self, synchronizer: Sync, operator: BM25Op | VectorOp) -> None:
         if any(files for files in synchronizer.py_files_to_process.values()):
             self.chunkers["py"].chunk_files(synchronizer.py_files_to_process)
-
         if any(files for files in synchronizer.md_files_to_process.values()):
             self.chunkers["md"].chunk_files(synchronizer.md_files_to_process)
+        if any(files for files in synchronizer.txt_files_to_process.values()):
+            self.chunkers["txt"].chunk_files(synchronizer.txt_files_to_process)
 
         new_docs: dict[str, DocSrc] = {}
         for chunker in self.chunkers.values():
