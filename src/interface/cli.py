@@ -1,5 +1,6 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+import uvicorn
 from pathlib import Path
 
 from src.lib import RsrchType
@@ -8,6 +9,12 @@ from src.retrieval import Engine
 
 
 class RAGCLI:
+
+    def serve(self, host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
+        """Launch the local HTTP API server."""
+
+        print(f"Starting RAG API server at http://{host}:{port}")
+        uvicorn.run("src.interface.api:app", host=host, port=port, reload=reload)
 
     def evaluate(self, student_search_results_path: str, dataset_path: str):
         """compare results"""
@@ -56,7 +63,7 @@ class RAGCLI:
         )
         engine.run_set_answer()
 
-    # SEMMANTIC COMMANDS
+    # SEMANTIC COMMANDS
     def index_semantic(self, max_chunk_size: int = 2000):
         """index datasets"""
 

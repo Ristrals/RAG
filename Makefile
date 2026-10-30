@@ -48,9 +48,9 @@ lint-strict:
 	mypy . --strict
 
 docs:
-	uv run python3 src search_dataset "data/datasets/private/UnansweredQuestions/dataset_docs_private.json" 5 "data/output/UnansweredQuestion"
+	uv run python3 src search_dataset data/datasets/private/UnansweredQuestions/dataset_docs_private.json 5 data/output/UnansweredQuestion
 	uv run python3 src evaluate data/output/UnansweredQuestion/dataset_docs_private.json data/datasets/private/AnsweredQuestions/dataset_docs_private.json
 
 code:
-	uv run python3 src search_dataset "data/datasets/private/UnansweredQuestions/dataset_code_private.json" 5 "data/output/UnansweredQuestion"
+	uv run python3 src search_dataset data/datasets/private/UnansweredQuestions/dataset_code_private.json 5 data/output/UnansweredQuestion
 	uv run python3 src evaluate data/output/UnansweredQuestion/dataset_code_private.json data/datasets/private/AnsweredQuestions/dataset_code_private.json

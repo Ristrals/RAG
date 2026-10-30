@@ -24,12 +24,18 @@ from src.lib.contracts import (
     GroundTruthDataset as GrndTruthDs,
     FileState,
     ProjectState,
-    RAGState
+    RAGState,
+    APIIndex,
+    APIQuery,
+    APIEvaluate,
+    APIDatasetSearch,
+    APIDatasetAnswer
 )
 
 __all__ = [
     "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType", "Sw",
     "DocSrc", "GrndTruthQ", "GrndTruthDs", "FileState", "ProjectState", "RAGState",
+    "APIIndex", "APIQuery", "APIEvaluate", "APIDatasetSearch", "APIDatasetAnswer",
     "MinSrc",
     "UnansQ",
     "AnsQ",

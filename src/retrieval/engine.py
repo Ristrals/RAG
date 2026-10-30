@@ -33,7 +33,7 @@ class Engine:
         self.oracle: Oracle = Oracle(self.path_finder, self.docsrc_store, self.k)
         self.evaluator: Evaluator = Evaluator(self.path_finder, self.k)
 
-    def run_single_search(self) -> None:
+    def run_single_search(self) -> MinSrchRes:
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         to_print: str = f"\n{Tc.ylw}[SINGLE RESEARCH]{Tc.clr}\n"
@@ -46,8 +46,9 @@ class Engine:
             )
 
         print(to_print)
+        return results
 
-    def run_single_answer(self) -> None:
+    def run_single_answer(self) -> MinAns:
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         answer: MinAns = self.oracle.answer(results)
@@ -62,26 +63,30 @@ class Engine:
         to_print += f"{Tc.org}LLM Answer{Tc.clr}: {answer.answer}\n"
 
         print(to_print)
+        return answer
 
-    def run_set_search(self) -> None:
+    def run_set_search(self) -> StuSrchRes:
         result: StuSrchRes = self.retriever.research_set()
         assert isinstance(self.path_finder.save_dir, Path)
         assert isinstance(self.path_finder.dataset_path, Path)
         output_file = self.path_finder.save_dir / self.path_finder.dataset_path.name
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(result.model_dump_json(indent=4))
+        return result
 
-    def run_set_answer(self) -> None:
+    def run_set_answer(self) -> StuSrchResAns:
         answer: StuSrchResAns = self.oracle.answer_set()
         assert isinstance(self.path_finder.save_dir, Path)
         assert isinstance(self.path_finder.student_search_results_path, Path)
         output_file = self.path_finder.save_dir / self.path_finder.student_search_results_path.name
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(answer.model_dump_json(indent=4))
-        pass
+        return answer
 
-    def evaluate(self) -> None:
+    def evaluate(self) -> str:
         self.evaluator.run_evaluation()
+        print(self.evaluator)
+        return self.evaluator.evaluation_str
 
     def _load_doc_store(self) -> None:
         if self.path_finder.docsrc_path.exists():

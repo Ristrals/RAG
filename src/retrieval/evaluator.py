@@ -18,9 +18,12 @@ class Evaluator:
         self.k = k
         self.total_response: int = 0
         self.valid_response: int = 0
+        self.evaluation_str: str = ""
 
+    def __str__(self) -> str:
+        return self.evaluation_str
 
-    def run_evaluation(self):
+    def run_evaluation(self) -> None:
         assert isinstance(self.path_finder.student_search_results_path, Path)
         with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
             student_data = json.load(f)
@@ -34,9 +37,10 @@ class Evaluator:
         assert isinstance(self.path_finder.dataset_path, Path)
         with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
             gt_data = json.load(f)
-            self.ground_truths: GrndTruthDs = GrndTruthDs.model_validate(gt_data)
+            self.ground_truths = GrndTruthDs.model_validate(gt_data)
 
-        print(f"\n{Tc.mag}[EVALUATION]{Tc.clr} Loaded evaluation mode: {'Answer' if self.is_answer_eval else 'Search'}")
+        self.evaluation_str += (
+            f"\n{Tc.mag}[EVALUATION]{Tc.clr} Loaded evaluation mode: {'Answer' if self.is_answer_eval else 'Search'}\n")
 
         assert isinstance(self.student_results, StuSrchRes | StuSrchResAns)
         for question in self.student_results.search_results:
@@ -45,13 +49,21 @@ class Evaluator:
             if ground_truth:
                 match self._evaluate(question, ground_truth):
                     case "valid":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> Overlap confirmed [{Tc.grn}VALIDATED{Tc.clr}]")
+                        self.evaluation_str += (
+                            f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> "
+                            f"Overlap confirmed [{Tc.grn}VALIDATED{Tc.clr}]\n")
                     case "no_overlap":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> No index overlap [{Tc.org}FAILED{Tc.clr}]")
+                        self.evaluation_str += (
+                            f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> "
+                            f"No index overlap [{Tc.org}FAILED{Tc.clr}]\n")
                     case "no_match":
-                        print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> No matching source file [{Tc.red}FAILED{Tc.clr}]")
+                        self.evaluation_str += (
+                            f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> "
+                            f"No matching source file [{Tc.red}FAILED{Tc.clr}]\n")
             else:
-                print(f"{Tc.ylw}QUESTION{Tc.clr} {question.question} -> Matching question ID not found [{Tc.red}MISSING{Tc.clr}]")
+                self.evaluation_str += (
+                    f"{Tc.ylw}QUESTION{Tc.clr} {question.question_id} -> "
+                    f"Matching question ID not found [{Tc.red}MISSING{Tc.clr}]\n")
 
         self._calculate_accuracy()
 
@@ -72,21 +84,20 @@ class Evaluator:
                     self.valid_response += 1
                     return "valid"
                 else:
-                    print(f"  [DEBUG NO_OVERLAP] | File: {result.file_path} | Start: {result.last_character_index} - End: {result.last_character_index}")
                     return "no_overlap"
-        print(f"  [DEBUG NO_MATCH] QID: {question.question_id} | Expected file: {valid_minimal_source.file_path}")
         return "no_match"
 
     def _ranges_overlap(self, start1: int, end1: int, start2: int, end2: int) -> bool:
         return max(start1, start2) <= min(end1, end2)
 
-    def _calculate_accuracy(self):
+    def _calculate_accuracy(self) -> None:
         if self.total_response == 0:
             accuracy = 0.0
         else:
             accuracy = (self.valid_response / self.total_response) * 100
 
-        print(f"\n{Tc.ylw}\n[EVALUATION SUMMARY]{Tc.clr}")
-        print(f"Total Evaluated: {self.total_response}")
-        print(f"Valid Matches:   {self.valid_response}")
-        print(f"Accuracy Rate:   {Tc.grn}{accuracy:.2f}%{Tc.clr}")
+        self.evaluation_str += (
+            f"\n{Tc.ylw}\n[EVALUATION SUMMARY]{Tc.clr}\n"
+            f"Total Evaluated: {self.total_response}\n"
+            f"Valid Matches:   {self.valid_response}\n"
+            f"Accuracy Rate:   {Tc.grn}{accuracy:.2f}%{Tc.clr}")

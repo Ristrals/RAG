@@ -6,7 +6,7 @@ from hashlib import sha256
 
 from src.lib import MinSrc, Chunk
 
-
+# MAXIMAL SOURCE
 class DocumentSource(BaseModel):
     """Complete metadata source models used under the hood"""
 
@@ -44,6 +44,7 @@ class DocumentSource(BaseModel):
         )
 
 
+# GROUND TRUTH
 class GroundTruthQuestion(BaseModel):
     question_id: str
     question: str
@@ -57,6 +58,7 @@ class GroundTruthDataset(BaseModel):
     rag_questions: list[GroundTruthQuestion]
 
 
+#  RAG STATE:
 class FileState(BaseModel):
     file_path: Path
     content_hash: str
@@ -105,3 +107,34 @@ class RAGState(BaseModel):
         target_strs = {str(f) for f in files_to_remove}
         for proj in self.rag_states:
             proj.files = [f for f in proj.files if str(f.file_path) not in target_strs]
+
+
+# API PAYLOADS
+# Indexing
+class APIIndex(BaseModel):
+    max_chunk_size: int
+
+
+# Evaluation
+class APIEvaluate(BaseModel):
+    student_result_path: str
+    ground_truth_path: str
+
+
+# Singular search & answer
+class APIQuery(BaseModel):
+    question: str
+    k: int
+
+
+# Search dataset
+class APIDatasetSearch(BaseModel):
+    dataset_path: str
+    k: int
+    save_directory_path: str
+
+
+# Answer dataset
+class APIDatasetAnswer(BaseModel):
+    student_result_path: str
+    save_directory_path: str
