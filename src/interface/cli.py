@@ -3,9 +3,12 @@
 import uvicorn
 from pathlib import Path
 
+from src.interface import CommandName
+from src.interface import validate_args
 from src.lib import RsrchType
 from src.index import Indexer
 from src.retrieval import Engine
+from src.lib import InterfaceIndex, InterfaceQuery, InterfaceEvaluate, InterfaceDatasetSearch, InterfaceDatasetAnswer
 
 
 class RAGCLI:
@@ -26,18 +29,21 @@ class RAGCLI:
         engine.evaluate()
 
     # LEXICAL COMMANDS
+    @validate_args(InterfaceIndex, CommandName.IND)
     def index(self, max_chunk_size: int = 2000):
         """index datasets"""
 
         indexer = Indexer(max_chunk_size=max_chunk_size)
         indexer.index()
 
+    @validate_args(InterfaceQuery, CommandName.SRCH)
     def search(self, query: str, k: int):
         """single search"""
 
         engine = Engine(user_query=query, k=k)
         engine.run_single_search()
 
+    @validate_args(InterfaceDatasetSearch, CommandName.SRCH_DS)
     def search_dataset(self, dataset_path: str, k: int, save_directory: str):
         """search dataset"""
 
@@ -48,6 +54,7 @@ class RAGCLI:
         )
         engine.run_set_search()
 
+    @validate_args(InterfaceQuery, CommandName.SRCH)
     def answer(self, query: str, k: int):
         """single answer"""
 

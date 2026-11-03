@@ -5,8 +5,9 @@ from pathlib import Path
 
 from src.utils import PathFinder
 from src.lib import (
-    Tc, GrndTruthDs, GrndTruthQ, StuSrchRes,StuSrchResAns, MinSrchRes
+    Tc, ErrType, GrndTruthDs, GrndTruthQ, StuSrchRes,StuSrchResAns, MinSrchRes
 )
+from src.retrieval import EvaluatorError
 
 
 class Evaluator:
@@ -24,20 +25,26 @@ class Evaluator:
         return self.evaluation_str
 
     def run_evaluation(self) -> None:
-        assert isinstance(self.path_finder.student_search_results_path, Path)
-        with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
-            student_data = json.load(f)
-        if "answers" in student_data or any("answer" in item for item in student_data.get("search_results", [])):
-            self.student_results = StuSrchResAns.model_validate(student_data)
-            self.is_answer_eval = True
-        else:
-            self.student_results = StuSrchRes.model_validate(student_data)
-            self.is_answer_eval = False
+        try:
+            assert isinstance(self.path_finder.student_search_results_path, Path)
+            with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
+                student_data = json.load(f)
+            if "answers" in student_data or any("answer" in item for item in student_data.get("search_results", [])):
+                self.student_results = StuSrchResAns.model_validate(student_data)
+                self.is_answer_eval = True
+            else:
+                self.student_results = StuSrchRes.model_validate(student_data)
+                self.is_answer_eval = False
+        except Exception as e:
+            raise EvaluatorError(ErrType.CRIT, e, 0)
 
-        assert isinstance(self.path_finder.dataset_path, Path)
-        with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
-            gt_data = json.load(f)
-            self.ground_truths = GrndTruthDs.model_validate(gt_data)
+        try:
+            assert isinstance(self.path_finder.dataset_path, Path)
+            with open(self.path_finder.dataset_path, "r", encoding="utf-8") as f:
+                gt_data = json.load(f)
+                self.ground_truths = GrndTruthDs.model_validate(gt_data)
+        except Exception as e:
+            raise EvaluatorError(ErrType.CRIT, e, 1)
 
         self.evaluation_str += (
             f"\n{Tc.mag}[EVALUATION]{Tc.clr} Loaded evaluation mode: {'Answer' if self.is_answer_eval else 'Search'}\n")

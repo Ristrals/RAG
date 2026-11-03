@@ -3,10 +3,9 @@
 import json
 from pathlib import Path
 
-from src.retrieval import Oracle, Retriever, Evaluator
+from src.retrieval import Oracle, Retriever, Evaluator, EngineError
 from src.utils import PathFinder
-from src.lib import RsrchType, Tc, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns, DocSrc
-
+from src.lib import RsrchType, Tc, ErrType, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns, DocSrc
 
 class Engine:
     def __init__(
@@ -21,7 +20,11 @@ class Engine:
 
         self.mode: RsrchType = mode
         self.user_query: str | None = user_query
-        self.k = k
+        self.k: int = k
+        if self.k < 1:
+            print(EngineError(ErrType.WRN, ValueError("'k' must be greater than 1, default to 10")))
+            self.k = 10
+        self.save_directory: Path | None = save_directory
         self.model_name = model_name
         self.path_finder: PathFinder = PathFinder(
             save_directory=save_directory,

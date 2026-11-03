@@ -1,6 +1,6 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 from hashlib import sha256
 
@@ -101,7 +101,7 @@ class RAGState(BaseModel):
                 ProjectState(project=project_name, files=[file_state])
             )
 
-    def remove_file_states(self, files_to_remove: list[Path | str]) -> None:
+    def remove_file_states(self, files_to_remove: list[Path]) -> None:
         """Removes specified file paths from all project states."""
 
         target_strs = {str(f) for f in files_to_remove}
@@ -109,32 +109,32 @@ class RAGState(BaseModel):
             proj.files = [f for f in proj.files if str(f.file_path) not in target_strs]
 
 
-# API PAYLOADS
+# Interface PAYLOADS
 # Indexing
-class APIIndex(BaseModel):
-    max_chunk_size: int
+class InterfaceIndex(BaseModel):
+    max_chunk_size: int  # = Field(ge=300, alias="max_chunk_size")
 
 
 # Evaluation
-class APIEvaluate(BaseModel):
+class InterfaceEvaluate(BaseModel):
     student_result_path: str
     ground_truth_path: str
 
 
 # Singular search & answer
-class APIQuery(BaseModel):
-    question: str
-    k: int
+class InterfaceQuery(BaseModel):
+    query: str
+    k: int  # = Field(ge=1, alias="k")
 
 
 # Search dataset
-class APIDatasetSearch(BaseModel):
+class InterfaceDatasetSearch(BaseModel):
     dataset_path: str
-    k: int
-    save_directory_path: str
+    k: int  # = Field(ge=1, alias="k")
+    save_directory: str
 
 
 # Answer dataset
-class APIDatasetAnswer(BaseModel):
+class InterfaceDatasetAnswer(BaseModel):
     student_result_path: str
     save_directory_path: str

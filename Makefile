@@ -4,7 +4,7 @@ run:
 	uv run $(PC) -m src
 
 index:
-	uv run $(PC) -m src index "alpha"
+	uv run $(PC) -m src index 2000
 
 debug:
 	uv run $(PC) -m pdb -m src

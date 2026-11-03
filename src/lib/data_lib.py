@@ -54,10 +54,17 @@ class Chunk:
     file_path: Path
     project: str
 
+
 class ResearchType(Enum):
     LEXICAL = "lexical"
     VECTOR = "vector"
     HYBRID = "hybrid"
+
+
+class ErrorType(Enum):
+    WRN = "WARNING"
+    CRIT = "CRITICAL"
+
 
 class StopWords:
     STOP_WORDS = {

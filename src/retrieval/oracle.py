@@ -12,9 +12,12 @@ from src.lib import (
     MinAns,
     StuSrchResAns,
     DocSrc,
-    Tc
+    Tc,
+    ErrType
 )
 from src.utils import PathFinder
+from src.retrieval import OracleError
+
 
 class Oracle:
     def __init__(
@@ -80,7 +83,7 @@ class Oracle:
             output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
             answer_text = self.tokenizer.decode(output_ids, skip_special_tokens=True).strip()
         except Exception as e:
-            answer_text = f"[Error generating answer: {e}]"  # TO BE MANAGED
+            raise OracleError(ErrType.CRIT, e)
 
         return MinAns(
             **minimal_srch_res.model_dump(),
@@ -112,8 +115,12 @@ class Oracle:
             file_text = f.read()
         return file_text[minimal_source.first_character_index:minimal_source.last_character_index]
 
-    def _load_student_result(self):
-        assert isinstance(self.path_finder.student_search_results_path, Path)
-        with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
-            raw_result = f.read()
-        return StuSrchRes.model_validate_json(raw_result)
+    def _load_student_result(self) -> StuSrchRes:
+        try:
+            assert isinstance(self.path_finder.student_search_results_path, Path)
+            with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
+                raw_result = f.read()
+            result = StuSrchRes.model_validate_json(raw_result)
+        except Exception as e:
+            raise OracleError(ErrType.CRIT, e)
+        return result

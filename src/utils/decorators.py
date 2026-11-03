@@ -5,6 +5,7 @@ from functools import wraps
 from src.lib import Tc
 
 
+# Time log
 def log_execution_time(func):
     @wraps(func)
     def wrapper(*args, **kwargs):

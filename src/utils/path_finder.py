@@ -1,6 +1,10 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
-
+from logging import CRITICAL
 from pathlib import Path
+
+from src.lib import ErrType
+from src.utils import PathFinderError
+
 
 class PathFinder:
     _DEFAULT_RAW_DIR = Path("data/raw")
@@ -30,25 +34,30 @@ class PathFinder:
         if self.save_dir:
             self.secure_save_directory()
 
-
     def secure_index_directories(self) -> None:
-        self.raw_dir.mkdir(parents=True, exist_ok=True)
-        self.bm25_dir.mkdir(parents=True, exist_ok=True)
-        self.vector_dir.mkdir(parents=True, exist_ok=True)
-        self.state_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.raw_dir.mkdir(parents=True, exist_ok=True)
+            self.bm25_dir.mkdir(parents=True, exist_ok=True)
+            self.vector_dir.mkdir(parents=True, exist_ok=True)
+            self.state_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise PathFinderError(ErrType.CRIT, e)
 
     def secure_save_directory(self) -> None:
         assert isinstance(self.save_dir, Path)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.save_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise PathFinderError(ErrType.CRIT, e)
 
     @staticmethod
     def validate_file_reading(path: Path) -> None:
         """Raises a FileNotFoundError if an expected input path does not exist."""
-        try:
-            if not path.exists():
-                raise FileNotFoundError()
-        except FileNotFoundError as fnfe:
-            raise Exception(fnfe)  # TO BE HANDLED CUSTOM ERROR
+
+        if not path.exists():
+            raise PathFinderError(
+                    ErrType.CRIT,
+                    FileNotFoundError(f"File '{path}' does not exist"))
 
     @property
     def state_path(self) -> Path:

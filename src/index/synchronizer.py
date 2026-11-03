@@ -29,7 +29,7 @@ class Synchronizer:
         self.remove_from_docsrc: list[Path] = []
 
     def load_rag_state(self) -> None:
-        """load current rag state or creat a new empty rag state when first use"""
+        """load current rag state if it exists"""
 
         if self.state_path.exists():
             with open(self.state_path, "r", encoding="utf-8") as f:
@@ -73,7 +73,6 @@ class Synchronizer:
         self.py_files_to_process[project_to_add.name] = []
         self.md_files_to_process[project_to_add.name] = []
         self.txt_files_to_process[project_to_add.name] = []
-        filestate_list: list[FileState] = []
 
         py_f, md_f, txt_f = self._recover_project_files(project_to_add)
         self.py_files_to_process[project_to_add.name].extend(py_f)

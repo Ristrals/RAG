@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.index import Chunker
 from src.lib import HeaderNode
+from src.index import ChunkerError, ChunkerType
 
 
 class MDChunker(Chunker):

@@ -6,7 +6,8 @@ from src.lib.data_lib import (
     HeaderNode,
     Chunk,
     ResearchType as RsrchType,
-    StopWords as Sw
+    ErrorType as ErrType,
+    StopWords as StopWord
 )
 from src.lib.mandatory_contracts import (
     MinimalSource as MinSrc,
@@ -25,17 +26,17 @@ from src.lib.contracts import (
     FileState,
     ProjectState,
     RAGState,
-    APIIndex,
-    APIQuery,
-    APIEvaluate,
-    APIDatasetSearch,
-    APIDatasetAnswer
+    InterfaceIndex,
+    InterfaceQuery,
+    InterfaceEvaluate,
+    InterfaceDatasetSearch,
+    InterfaceDatasetAnswer
 )
 
 __all__ = [
-    "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType", "Sw",
+    "Tc", "CodeNode", "HeaderNode", "Chunk", "RsrchType", "ErrType", "StopWord",
     "DocSrc", "GrndTruthQ", "GrndTruthDs", "FileState", "ProjectState", "RAGState",
-    "APIIndex", "APIQuery", "APIEvaluate", "APIDatasetSearch", "APIDatasetAnswer",
+    "InterfaceIndex", "InterfaceQuery", "InterfaceEvaluate", "InterfaceDatasetSearch", "InterfaceDatasetAnswer",
     "MinSrc",
     "UnansQ",
     "AnsQ",

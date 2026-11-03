@@ -3,8 +3,10 @@
 import ast
 from pathlib import Path
 
+from src.index import ChunkerError, ChunkerType
 from src.index import Chunker
 from src.lib import CodeNode
+from src.lib.data_lib import ErrorType
 
 
 class PYChunker(Chunker):
@@ -51,8 +53,8 @@ class PYChunker(Chunker):
 
         try:
             ast_tree = ast.parse(str(self._file_content))
-        except SyntaxError:
-            # TO DO: Insert Error handling
+        except SyntaxError as se:
+            print(ChunkerError(ErrorType.WRN, se, ChunkerType.PY, file_path=self._current_file_path))
             return
 
         line_offsets: list[int] = self._build_line_offsets()
@@ -85,9 +87,9 @@ class PYChunker(Chunker):
                         if methods[0].decorator_list
                         else methods[0].lineno
                     )
-                    preamble_end_idx: int = line_offsets[first_method_start_line - 1]
+                    preamble_end_idx = line_offsets[first_method_start_line - 1]
                 else:
-                    preamble_end_idx: int = line_offsets[node.end_lineno - 1] + node.end_col_offset
+                    preamble_end_idx = line_offsets[node.end_lineno - 1] + node.end_col_offset
 
                 preamble_text = self._file_content[class_start_idx:preamble_end_idx].strip()
                 preamble_lines = [

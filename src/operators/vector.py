@@ -9,6 +9,7 @@ from chromadb.utils import embedding_functions
 from src.lib import DocSrc, Tc
 from src.utils import PathFinder
 from src.utils.decorators import log_execution_time
+from src.operators import OpType, OpErrType, operator_error_handler
 
 
 class VectorOperator:
@@ -31,6 +32,7 @@ class VectorOperator:
         self._client: Any | None = None
         self._collection: chromadb.Collection | None = None
 
+    @operator_error_handler(OpType.VCTR, OpErrType.IND)
     def _get_collection(self) -> chromadb.Collection:
         """Load or initialize ChromaDB persistent client and collection."""
 
@@ -46,6 +48,7 @@ class VectorOperator:
         assert self._collection is not None
         return self._collection
 
+    @operator_error_handler(OpType.VCTR, OpErrType.IND)
     @log_execution_time
     def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
 
@@ -95,6 +98,7 @@ class VectorOperator:
     def load(self) -> None:
         self._get_collection()
 
+    @operator_error_handler(OpType.VCTR, OpErrType.IND)
     def search(
             self, query: str, k: int = 10
     ) -> list[tuple[str, float]]:
@@ -127,7 +131,8 @@ class VectorOperator:
 
         return result
 
-    def delete(self, file_paths: Path | list[Path] | set[Path]) -> None:
+    @operator_error_handler(OpType.VCTR, OpErrType.IND)
+    def delete(self, file_paths: Path | list[Path | str] | set[Path]) -> None:
         """Removes all vector embeddings associated with file_path(s) from ChromaDB."""
         if self._collection is None:
             self.load()

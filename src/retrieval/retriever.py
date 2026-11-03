@@ -12,10 +12,12 @@ from src.lib import (
     StuSrchRes,
     RsrchType,
     DocSrc,
-    Tc
+    Tc,
+    ErrType,
 )
 from src.operators import BM25Op, VectorOp
 from src.utils import PathFinder
+from src.retrieval import RetrieverError
 
 
 class Retriever:
@@ -54,7 +56,7 @@ class Retriever:
                 raw_results = self._hybrid_research_calculation(raw_bm25_res, raw_vector_res)
 
         for doc_id, score in raw_results:
-            doc_data = self.docsrc_store.get(doc_id, {})
+            doc_data: DocSrc = self.docsrc_store.get(doc_id, {})
             retrieved_sources.append(
                 MinSrc(
                     file_path=doc_data.file_path,
@@ -77,7 +79,7 @@ class Retriever:
                 raw_data = json.load(f)
                 dataset: RagDataset = RagDataset.model_validate(raw_data)
         except Exception as e:
-            raise e # TOBBE HANDLED TO VERIFY PROPER JSON SCHEMA
+            raise RetrieverError(ErrType.CRIT, e)
 
         student_search_results: list[MinSrchRes] = []
         for query in tqdm(
