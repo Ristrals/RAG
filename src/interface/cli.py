@@ -61,6 +61,7 @@ class RAGCLI:
         engine = Engine(user_query=query, k=k)
         engine.run_single_answer()
 
+    @validate_args(InterfaceQuery, CommandName.ANS_DS)
     def answer_dataset(self, student_search_result_path: str, save_directory: str):
         """answer dataset"""
 
