@@ -1,10 +1,11 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pathlib import Path
 from hashlib import sha256
 
 from src.lib import MinSrc, Chunk
+
 
 # MAXIMAL SOURCE
 class DocumentSource(BaseModel):
@@ -20,7 +21,7 @@ class DocumentSource(BaseModel):
     last_character_index: int
 
     @classmethod
-    def from_chunk(cls, chunk: Chunk):
+    def from_chunk(cls, chunk: Chunk) -> "DocumentSource":
         raw_id = f"{chunk.project}:{chunk.file_path}:{chunk.start_index}-{chunk.end_index}"
         doc_id = f"{chunk.project}_{sha256(raw_id.encode('utf-8')).hexdigest()[:16]}"
         content_hash = sha256(chunk.content.encode("utf-8")).hexdigest()
@@ -112,29 +113,29 @@ class RAGState(BaseModel):
 # Interface PAYLOADS
 # Indexing
 class InterfaceIndex(BaseModel):
-    max_chunk_size: int  # = Field(ge=300, alias="max_chunk_size")
+    max_chunk_size: int
 
 
 # Evaluation
 class InterfaceEvaluate(BaseModel):
-    student_result_path: str
-    ground_truth_path: str
+    student_search_results_path: str
+    dataset_path: str
 
 
 # Singular search & answer
 class InterfaceQuery(BaseModel):
     query: str
-    k: int  # = Field(ge=1, alias="k")
+    k: int
 
 
 # Search dataset
 class InterfaceDatasetSearch(BaseModel):
     dataset_path: str
-    k: int  # = Field(ge=1, alias="k")
+    k: int
     save_directory: str
 
 
 # Answer dataset
 class InterfaceDatasetAnswer(BaseModel):
-    student_result_path: str
-    save_directory_path: str
+    student_search_result_path: str
+    save_directory: str

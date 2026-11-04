@@ -18,7 +18,7 @@ class Chunker(ABC):
         self._index_cursor: int = 0
         self.chunks: list[Chunk] = []
 
-    def chunk_files(self, files_dict) -> None:
+    def chunk_files(self, files_dict: dict[str, list[Path]]) -> None:
         """Chunk files into chunks"""
 
         self.chunks.clear()

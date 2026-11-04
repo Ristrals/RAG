@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.utils import PathFinder
 from src.lib import (
-    Tc, ErrType, GrndTruthDs, GrndTruthQ, StuSrchRes,StuSrchResAns, MinSrchRes
+    Tc, ErrType, GrndTruthDs, GrndTruthQ, StuSrchRes, StuSrchResAns, MinSrchRes
 )
 from src.retrieval import EvaluatorError
 

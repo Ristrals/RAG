@@ -4,6 +4,8 @@ from enum import Enum
 import inspect
 from functools import wraps
 from pydantic import BaseModel, ValidationError
+from collections.abc import Callable
+from typing import ParamSpec, TypeVar
 
 from src.lib import Tc, ErrType
 
@@ -16,19 +18,25 @@ class CommandName(Enum):
     ANS_DS = "Answer dataset command (str, str)"
 
 
-def validate_args(model_cls: type[BaseModel], command: CommandName):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def validate_args(
+    model_cls: type[BaseModel],
+    command: CommandName
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator that validates arguments against a Pydantic model
     while keeping the original function signature untouched.
     """
-    def decorator(func):
+
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         sig = inspect.signature(func)
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             bound = sig.bind(*args, **kwargs)
             bound.apply_defaults()
-
-            # Separate 'self' from the method arguments so Pydantic doesn't validate it
             arguments = bound.arguments
             self_arg = arguments.pop("self", None)
 
@@ -37,13 +45,12 @@ def validate_args(model_cls: type[BaseModel], command: CommandName):
             except ValidationError as e:
                 raise InterfaceError(ErrType.CRIT, e, command)
 
-            # Re-invoke the original method with 'self' and validated arguments
             call_args = validated.model_dump()
             if self_arg is not None:
                 return func(self_arg, **call_args)
-            return func(**call_args)
 
-        return wrapper  # <-- Fixed: return wrapper instead of decorator
+            return func(**call_args)  # type: ignore[call-arg]
+        return wrapper
     return decorator
 
 

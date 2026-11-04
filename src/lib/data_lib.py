@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+
 class TextColors:
     """ANSI color codes for terminal output formatting.
 

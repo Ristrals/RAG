@@ -1,11 +1,13 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 import json
+import shutil
 from pathlib import Path
 
 from src.retrieval import Oracle, Retriever, Evaluator, EngineError
 from src.utils import PathFinder
 from src.lib import RsrchType, Tc, ErrType, MinSrchRes, MinAns, StuSrchRes, StuSrchResAns, DocSrc
+
 
 class Engine:
     def __init__(
@@ -41,12 +43,15 @@ class Engine:
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         to_print: str = f"\n{Tc.ylw}[SINGLE RESEARCH]{Tc.clr}\n"
 
-        for min_src in results.retrieved_sources:
-            to_print += (
-                f"{min_src.file_path} - "
-                f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
-                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
-            )
+        if results.retrieved_sources:
+            for min_src in results.retrieved_sources:
+                to_print += (
+                    f"{min_src.file_path} - "
+                    f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
+                    f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
+                )
+        else:
+            to_print += f"{Tc.ylw}No relevant matches found for query{Tc.clr}:\n '{self.user_query}'\n"
 
         print(to_print)
         return results
@@ -55,15 +60,18 @@ class Engine:
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         answer: MinAns = self.oracle.answer(results)
-
         to_print: str = f"\n{Tc.org}[SINGLE ANSWER]{Tc.clr}\n"
-        for min_src in answer.retrieved_sources:
-            to_print += (
-                f"{min_src.file_path} - "
-                f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
-                f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
-            )
-        to_print += f"{Tc.org}LLM Answer{Tc.clr}: {answer.answer}\n"
+
+        if results.retrieved_sources and self.retriever.null_score is False:
+            for min_src in answer.retrieved_sources:
+                to_print += (
+                    f"{min_src.file_path} - "
+                    f"[{Tc.cyn}{min_src.first_character_index}{Tc.clr} : "
+                    f"{Tc.cyn}{min_src.last_character_index}{Tc.clr}]\n"
+                )
+        else:
+            to_print += f"{Tc.ylw}No relevant matches found for query{Tc.clr}:\n '{self.user_query}'\n"
+        to_print += f"\n{Tc.org}LLM Answer{Tc.clr}: {answer.answer}\n"
 
         print(to_print)
         return answer
@@ -90,6 +98,34 @@ class Engine:
         self.evaluator.run_evaluation()
         print(self.evaluator)
         return self.evaluator.evaluation_str
+
+    def purge_index(self) -> None:
+        index_folder: Path = Path()
+        rag_state_file: Path = Path()
+
+        match self.mode:
+            case RsrchType.LEXICAL:
+                index_folder = self.path_finder.bm25_dir
+                rag_state_file = self.path_finder.rag_state_bm25_path
+                self._remove_data(index_folder, rag_state_file)
+            case RsrchType.VECTOR:
+                index_folder = self.path_finder.vector_dir
+                rag_state_file = self.path_finder.rag_state_vector_path
+                self._remove_data(index_folder, rag_state_file)
+            case RsrchType.HYBRID:
+                self._remove_data(self.path_finder.processed_dir)
+                self._remove_data(self.path_finder.state_dir)
+
+    @staticmethod
+    def _remove_data(folder: Path, rag_file: Path | None = None) -> None:
+        try:
+            if folder.exists():
+                shutil.rmtree(folder)
+            if rag_file and rag_file.exists():
+                rag_file.unlink(missing_ok=True)
+        except Exception as e:
+            raise EngineError(ErrType.CRIT, e)
+        pass
 
     def _load_doc_store(self) -> None:
         if self.path_finder.docsrc_path.exists():

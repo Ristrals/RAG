@@ -9,8 +9,8 @@ from src.lib import FileState, ProjectState, RAGState, DocSrc
 
 
 class Synchronizer:
-    def __init__(self,
-        path_finder: PathFinder,
+    def __init__(
+        self, path_finder: PathFinder,
         document_sources: dict[str, DocSrc],
         state_path: Path,
         operator: BM25Op | VectorOp | None = None
@@ -45,16 +45,14 @@ class Synchronizer:
         current_projects_set: set[Path] = set()
         rag_project_set: set[Path] = set()
 
-        # recovers projects currently in data/raw folder
         if not self.path_finder.raw_dir.exists():
-            raise FileNotFoundError()  # TO BE HANDLED
+            raise FileNotFoundError()
         for project in self.path_finder.raw_dir.iterdir():
             if project.is_dir() and not project.name.startswith("."):
                 current_projects_set.add(project)
 
-        # recovers projects registered in current RAG state
-        for project in self.rag_state.rag_states:
-            rag_project_set.add(project.project)
+        for proj_project in self.rag_state.rag_states:
+            rag_project_set.add(proj_project.project)
 
         proj_to_remove: set[Path] = rag_project_set.difference(current_projects_set)
         proj_to_add: set[Path] = current_projects_set.difference(rag_project_set)
@@ -119,7 +117,9 @@ class Synchronizer:
                 current_f = f.read()
             current_file_hash = sha256(current_f.encode("utf-8")).hexdigest()
 
-            rag_file_hash = self.rag_state.get_file_state(project_to_sync.name, file).content_hash
+            file_state = self.rag_state.get_file_state(project_to_sync.name, file)
+            assert file_state is not None
+            rag_file_hash = file_state.content_hash
             if rag_file_hash != current_file_hash:
                 files_to_reprocess.append(file)
 
@@ -133,6 +133,8 @@ class Synchronizer:
             self.py_files_to_process[project.name] = []
         if project.name not in self.md_files_to_process:
             self.md_files_to_process[project.name] = []
+        if project.name not in self.txt_files_to_process:
+            self.txt_files_to_process[project.name] = []
         match file.suffix.lower():
             case ".py": self.py_files_to_process[project.name].append(file)
             case ".md": self.md_files_to_process[project.name].append(file)

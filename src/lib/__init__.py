@@ -17,7 +17,7 @@ from src.lib.mandatory_contracts import (
     MinimalSearchResults as MinSrchRes,
     MinimalAnswer as MinAns,
     StudentSearchResults as StuSrchRes,
-    StudentSearchResultsAndAnswer as StuSrchResAns, MinimalSource
+    StudentSearchResultsAndAnswer as StuSrchResAns
 )
 from src.lib.contracts import (
     DocumentSource as DocSrc,

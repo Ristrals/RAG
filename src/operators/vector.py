@@ -84,9 +84,9 @@ class VectorOperator:
                   unit="chunk",
                   colour="yellow") as pbar:
             for i in range(0, total_chunks, self._BATCH_SIZE):
-                batch_ids = ids[i : i + self._BATCH_SIZE]
-                batch_documents = texts[i : i + self._BATCH_SIZE]
-                batch_metadatas = metadatas[i : i + self._BATCH_SIZE]
+                batch_ids = ids[i: i + self._BATCH_SIZE]
+                batch_documents = texts[i: i + self._BATCH_SIZE]
+                batch_metadatas = metadatas[i: i + self._BATCH_SIZE]
 
                 collection.upsert(
                     ids=batch_ids,
@@ -132,7 +132,7 @@ class VectorOperator:
         return result
 
     @operator_error_handler(OpType.VCTR, OpErrType.IND)
-    def delete(self, file_paths: Path | list[Path | str] | set[Path]) -> None:
+    def delete(self, file_paths: Path | list[Path] | list[str] | set[Path]) -> None:
         """Removes all vector embeddings associated with file_path(s) from ChromaDB."""
         if self._collection is None:
             self.load()

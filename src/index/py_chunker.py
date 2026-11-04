@@ -61,6 +61,7 @@ class PYChunker(Chunker):
 
         for node in ast_tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                assert node.end_lineno is not None and node.end_col_offset is not None
                 start_line = node.decorator_list[0].lineno if node.decorator_list else node.lineno
                 start_idx: int = line_offsets[start_line - 1]
                 end_idx: int = line_offsets[node.end_lineno - 1] + node.end_col_offset
@@ -89,6 +90,7 @@ class PYChunker(Chunker):
                     )
                     preamble_end_idx = line_offsets[first_method_start_line - 1]
                 else:
+                    assert node.end_lineno is not None and node.end_col_offset is not None
                     preamble_end_idx = line_offsets[node.end_lineno - 1] + node.end_col_offset
 
                 preamble_text = self._file_content[class_start_idx:preamble_end_idx].strip()
@@ -107,6 +109,7 @@ class PYChunker(Chunker):
                     ))
 
                 for method in methods:
+                    assert method.end_lineno is not None and method.end_col_offset is not None
                     m_start_line = method.decorator_list[0].lineno if method.decorator_list else method.lineno
                     m_start = line_offsets[m_start_line - 1]
                     m_end = line_offsets[method.end_lineno - 1] + method.end_col_offset

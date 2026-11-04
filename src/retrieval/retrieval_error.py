@@ -55,6 +55,7 @@ class EvaluatorError(Exception):
         msg += f"{Tc.ylw}> {self.err}{Tc.clr}\n"
         return msg
 
+
 class EngineError(Exception):
     def __init__(self, err_type: ErrType, err: Exception) -> None:
         self.err_type: ErrType = err_type

@@ -10,4 +10,5 @@ __all__ = [
     "OperatorError",
     "RetrieverError", "OracleError", "EvaluatorError", "EngineError",
     "PathFinderError",
+    "InterfaceError"
 ]

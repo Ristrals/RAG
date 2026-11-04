@@ -1,6 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
 import torch
+from functools import lru_cache
 from tqdm import tqdm
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizerFast
@@ -24,7 +25,7 @@ class Oracle:
         self, path_finder: PathFinder,
         doc_store: dict[str, DocSrc],
         k: int = 10,
-        model_name: str ="Qwen/Qwen3-0.6B"
+        model_name: str = "Qwen/Qwen3-0.6B"
     ) -> None:
 
         self.path_finder: PathFinder = path_finder
@@ -95,14 +96,15 @@ class Oracle:
         result = self._load_student_result()
 
         for minimal_srch_res in tqdm(
-                result.search_results,
-                desc=f"[{Tc.mag}[Processing dataset answers]{Tc.clr}]",
-                unit="query",
-                colour="magenta"):
-        # for minimal_srch_res in result.search_results:
+            result.search_results,
+            desc=f"[{Tc.mag}[Processing dataset answers]{Tc.clr}]",
+            unit="query",
+            colour="magenta"
+        ):
             answer_list.append(self.answer(minimal_srch_res))
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
         return StuSrchResAns(
             search_results=answer_list,
             k=self.k
@@ -110,10 +112,20 @@ class Oracle:
 
     @staticmethod
     def _recover_snippets(minimal_source: MinSrc) -> str:
-        file_path = Path(minimal_source.file_path)
-        with open(file_path, "r", encoding="utf-8") as f:
+        return Oracle._cached_file_slice(
+            str(minimal_source.file_path),
+            minimal_source.first_character_index,
+            minimal_source.last_character_index
+        )
+
+    @staticmethod
+    @lru_cache(maxsize=1024)
+    def _cached_file_slice(file_path: str, start: int, end: int) -> str:
+        """Caches file reads and character slicing to avoid redundant disk I/O."""
+        path = Path(file_path)
+        with open(path, "r", encoding="utf-8") as f:
             file_text = f.read()
-        return file_text[minimal_source.first_character_index:minimal_source.last_character_index]
+        return file_text[start:end]
 
     def _load_student_result(self) -> StuSrchRes:
         try:

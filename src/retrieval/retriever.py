@@ -34,6 +34,7 @@ class Retriever:
         self.mode = mode
         self.k = k
         self.docsrc_store: dict[str, DocSrc] = docsrc_store
+        self.null_score: bool = False
 
         if mode == RsrchType.LEXICAL or mode == RsrchType.HYBRID:
             self.bm25_op = BM25Op(self.path_finder, self.docsrc_store)
@@ -55,8 +56,15 @@ class Retriever:
                 raw_vector_res = self.vector_op.search(question_text, k=self.k)
                 raw_results = self._hybrid_research_calculation(raw_bm25_res, raw_vector_res)
 
+        if not raw_results or all(score == 0.0 for _, score in raw_results):
+            self.null_score = True
+        else:
+            self.null_score = False
+
         for doc_id, score in raw_results:
-            doc_data: DocSrc = self.docsrc_store.get(doc_id, {})
+            doc_data = self.docsrc_store.get(doc_id)
+            if doc_data is None:
+                continue
             retrieved_sources.append(
                 MinSrc(
                     file_path=doc_data.file_path,

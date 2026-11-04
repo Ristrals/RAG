@@ -2,6 +2,9 @@
 
 import functools
 from enum import Enum
+from collections.abc import Callable
+from typing import ParamSpec, TypeVar
+
 from src.lib import Tc
 from src.lib import ErrType
 
@@ -17,11 +20,19 @@ class OpType(Enum):
     VCTR = "Vector"
 
 
-def operator_error_handler(op: OpType, src: OpErrType, err_type: ErrType=ErrType.CRIT):
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def operator_error_handler(
+    op: OpType,
+    src: OpErrType,
+    err_type: ErrType = ErrType.CRIT
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator to catch and handle known RAG application and unexpected errors."""
-    def decorator(func):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 return func(*args, **kwargs)
             except Exception as e:

@@ -13,6 +13,7 @@ class ChunkerType(Enum):
     MD = "Mark Down"
     TXT = "Text"
 
+
 class ChunkerError(Exception):
     def __init__(self, err_type: ErrType, err: Exception, chunker: ChunkerType, file_path: Path | None = None) -> None:
         self.err_type: ErrType = err_type
@@ -35,6 +36,7 @@ class ChunkerError(Exception):
             return msg
         msg += f"{Tc.ylw}> {self.err}{Tc.clr}\n"
         return msg
+
 
 class IndexerError(Exception):
     def __init__(self, err_type: ErrType, err: Exception) -> None:

@@ -36,11 +36,12 @@ class BM25Operator:
         assert isinstance(self._conn, sqlite3.Connection)
         with self._conn:
             for i in range(0, total_docs, batch_size):
-                batch_ids = doc_ids[i : i + batch_size]
+                batch_ids = doc_ids[i: i + batch_size]
                 placeholders = ",".join(["?"] * len(batch_ids))
                 self._conn.execute(
-                f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})",
-                    batch_ids)
+                f"DELETE FROM fts_chunks WHERE doc_id IN ({placeholders})",  # noqa: E122
+                    batch_ids
+                )
             data_to_insert = [
                 (doc_id, str(doc.file_path), doc.hierarchy, doc.text)
                 for doc_id, doc in docs_to_index.items()
@@ -51,7 +52,7 @@ class BM25Operator:
                     unit="doc",
                     colour="yellow") as pbar:
                 for i in range(0, total_docs, batch_size):
-                    batch_data = data_to_insert[ i : i + batch_size]
+                    batch_data = data_to_insert[i:i + batch_size]
                     self._conn.executemany(
                         "INSERT INTO fts_chunks (doc_id, file_path, hierarchy, content) VALUES (?, ?, ?, ?)",
                         batch_data
@@ -110,7 +111,7 @@ class BM25Operator:
             return []
 
     @operator_error_handler(OpType.BM25, OpErrType.DEL)
-    def delete(self, file_paths: Path | list[Path | str] | set[Path]) -> None:
+    def delete(self, file_paths: Path | list[Path] | list[str] | set[Path]) -> None:
         """Surgically deletes chunks associated with file_path(s) in O(delta) time."""
         if isinstance(file_paths, Path):
             paths_to_remove = {str(file_paths)}
@@ -131,26 +132,3 @@ class BM25Operator:
         assert isinstance(self._conn, sqlite3.Connection)
         with self._conn:
             self._conn.execute(f"DELETE FROM fts_chunks WHERE file_path IN ({placeholders})", list(paths_to_remove))
-
-        def debug_inspect_tokens(self, prefix: str = "") -> None:
-            """Inspects tokens stored in the FTS5 index to verify tokenization behavior."""
-            assert isinstance(self._conn, sqlite3.Connection)
-            cursor = self._conn.cursor()
-
-            # Create an auxiliary vocab table mapping to your fts_chunks table
-            cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts_vocab USING fts5vocab('fts_chunks', 'row');")
-
-            query = "SELECT term, doc/cnt FROM fts_vocab"
-            params = ()
-            if prefix:
-                query += " WHERE term LIKE ?"
-                params = (f"{prefix}%",)
-
-            cursor.execute(query, params)
-            print(f"{'TERM':<30} | {'DOCUMENT FREQUENCY'}")
-            print("-" * 50)
-            for row in cursor.fetchall():
-                print(f"{row[0]:<30} | {row[1]}")
-
-            # Clean up vocab table
-            cursor.execute("DROP TABLE IF EXISTS fts_vocab;")

@@ -1,5 +1,5 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
-from logging import CRITICAL
+
 from pathlib import Path
 
 from src.lib import ErrType
@@ -78,7 +78,3 @@ class PathFinder:
     @property
     def database_path(self) -> Path:
         return self.bm25_dir / "bm25.db"
-
-    @property
-    def link_path(self) -> Path:
-        return self.bm25_dir / "std_bm25_link.json"

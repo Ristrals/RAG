@@ -1,7 +1,5 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
-from pathlib import Path
-
 from src.index import Chunker
 
 
@@ -29,23 +27,3 @@ class TxtChunker(Chunker):
             return
 
         self._create_chunks(context_prefix, hierarchy, body)
-
-
-if __name__ == "__main__":
-    txt_chunker = TxtChunker(2000)
-    txt_file = {
-        "RAGAgainstTheMachine": [Path("data/raw/vllm-0.10.1/CMakeLists.txt")]
-    }
-    txt_chunker.chunk_files(txt_file)
-
-    for i, chunk in enumerate(txt_chunker.chunks):
-        print(f"--- CHUNK {i + 1} ---")
-        print(f"Project:     {chunk.project}")
-        print(f"File path:   {chunk.file_path}")
-        print(f"Hierarchy:   {chunk.hierarchy}")
-        print(f"Start Index: {chunk.start_index}")
-        print(f"End Index:   {chunk.end_index}")
-        print(f"Content Length: {len(chunk.content)}")
-        print("Content:\n")
-        print(chunk.content)
-        print("\n" + "=" * 40 + "\n")
