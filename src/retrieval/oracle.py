@@ -48,7 +48,7 @@ class Oracle:
         model_prompt_role: str = (
             "You are a precise vLLM code analysis assistant."
             "Answer the question using ONLY the provided code/doc snippets."
-            "Keep the output concise, direct, and factual.")
+            "Keep the output concise and factual.")
 
         model_prompt_context: str = (f"""
             QUESTION:
