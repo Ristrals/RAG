@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+"""CLI entrypoint for the RAGAgainstTheMachine application."""
+
 import os
 
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
@@ -21,6 +23,9 @@ from src import (  # noqa: E402
 
 
 def main() -> None:
+    """Run the Fire CLI and handle known application exceptions.
+
+    """
     try:
         fire.Fire(RAGCLI)
     except (

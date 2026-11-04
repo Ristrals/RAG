@@ -11,6 +11,8 @@ from src.lib import Tc, ErrType
 
 
 class CommandName(Enum):
+    """Command categories used to contextualize argument validation errors."""
+
     IND = "Index command (int>250)"
     SRCH = "Search or answer command (str, int>0)"
     EVAL = "Evaluation command(str, str)"
@@ -26,8 +28,14 @@ def validate_args(
     model_cls: type[BaseModel],
     command: CommandName
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator that validates arguments against a Pydantic model
-    while keeping the original function signature untouched.
+    """Validate function arguments against a Pydantic model.
+
+    Args:
+        model_cls: Pydantic model used to validate incoming arguments.
+        command: Command identifier used when reporting validation errors.
+
+    Returns:
+        Decorator preserving the original callable signature and behavior.
     """
 
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
@@ -55,12 +63,33 @@ def validate_args(
 
 
 class InterfaceError(Exception):
+    """Error raised when interface input validation fails.
+
+    Attributes:
+        err_type: Severity level for the error report.
+        err: Underlying exception generated during validation.
+        command: Command context where the error occurred.
+    """
+
     def __init__(self, err_type: ErrType, err: Exception, command: CommandName) -> None:
+        """Initialize an interface validation error.
+
+        Args:
+            err_type: Severity for message formatting.
+            err: Underlying validation exception.
+            command: Command context associated with the invalid input.
+
+        """
         self.err_type: ErrType = err_type
         self.err: Exception = err
         self.command: CommandName = command
 
     def __str__(self) -> str:
+        """Return a formatted and colorized validation error message.
+
+        Returns:
+            Human-readable error details.
+        """
         msg = ""
         match self.err_type:
             case ErrType.CRIT: msg += f"{Tc.red}[!] Caught Critical InterfaceError{Tc.clr}:\n"

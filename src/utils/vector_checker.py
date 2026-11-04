@@ -1,3 +1,5 @@
+"""Standalone utility script to inspect semantic vector index contents."""
+
 import chromadb
 from pathlib import Path
 

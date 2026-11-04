@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+"""Public exports for indexing components and related errors."""
+
 from src.index.index_error import ChunkerError, ChunkerType, IndexerError
 from src.index.chunker import Chunker
 from src.index.md_chunker import MDChunker as MdC

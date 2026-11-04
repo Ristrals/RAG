@@ -9,12 +9,35 @@ from src.lib import FileState, ProjectState, RAGState, DocSrc
 
 
 class Synchronizer:
+    """Synchronize project file states with indexing backends.
+
+    Attributes:
+        path_finder: Helper exposing data and state file locations.
+        operator: Optional backend operator used for delete propagation.
+        docsrc_store: In-memory map of document source entries.
+        state_path: Path to persisted RAG state file.
+        rag_state: Loaded RAG state for all tracked projects.
+        py_files_to_process: Python files queued for chunking by project.
+        md_files_to_process: Markdown files queued for chunking by project.
+        txt_files_to_process: Text files queued for chunking by project.
+        remove_from_docsrc: Files scheduled for document-source cleanup.
+    """
+
     def __init__(
         self, path_finder: PathFinder,
         document_sources: dict[str, DocSrc],
         state_path: Path,
         operator: BM25Op | VectorOp | None = None
     ) -> None:
+        """Initialize synchronizer state and load persisted metadata.
+
+        Args:
+            path_finder: Path helper exposing project storage locations.
+            document_sources: Existing document source map keyed by identifier.
+            state_path: File path of the persisted RAG state.
+            operator: Optional backend operator for index delete operations.
+
+        """
         self.path_finder: PathFinder = path_finder
         self.operator: BM25Op | VectorOp | None = operator
         self.docsrc_store: dict[str, DocSrc] = document_sources
@@ -29,7 +52,9 @@ class Synchronizer:
         self.remove_from_docsrc: list[Path] = []
 
     def load_rag_state(self) -> None:
-        """load current rag state if it exists"""
+        """Load persisted RAG state from disk when available.
+
+        """
 
         if self.state_path.exists():
             with open(self.state_path, "r", encoding="utf-8") as f:
@@ -37,11 +62,17 @@ class Synchronizer:
             self.rag_state = RAGState(**raw_state)
 
     def export_rag_state(self) -> None:
+        """Persist current RAG state to disk.
+
+        """
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.state_path, "w", encoding="utf-8") as f:
             f.write(self.rag_state.model_dump_json(indent=4))
 
     def check_projects(self) -> None:
+        """Detect project-level changes and synchronize tracked state.
+
+        """
         current_projects_set: set[Path] = set()
         rag_project_set: set[Path] = set()
 
@@ -68,6 +99,12 @@ class Synchronizer:
         self.export_rag_state()
 
     def _add_project(self, project_to_add: Path) -> None:
+        """Register a new project and queue all supported files.
+
+        Args:
+            project_to_add: Project directory to add to tracked state.
+
+        """
         self.py_files_to_process[project_to_add.name] = []
         self.md_files_to_process[project_to_add.name] = []
         self.txt_files_to_process[project_to_add.name] = []
@@ -82,6 +119,12 @@ class Synchronizer:
             self._add_file(project_to_add, file_path)
 
     def _remove_project(self, project_to_remove: Path) -> None:
+        """Remove a project and all associated indexed files.
+
+        Args:
+            project_to_remove: Project directory to remove from tracked state.
+
+        """
         proj: ProjectState = next((p for p in self.rag_state.rag_states if p.project == project_to_remove))
 
         files_to_remove = [file.file_path for file in proj.files]
@@ -92,6 +135,12 @@ class Synchronizer:
         ]
 
     def _sync_project(self, project_to_sync: Path) -> None:
+        """Synchronize one existing project against current filesystem state.
+
+        Args:
+            project_to_sync: Project directory to compare and update.
+
+        """
         rag_project: ProjectState | None = self.rag_state.get_project_state(project_to_sync)
         if not rag_project:
             return
@@ -129,6 +178,13 @@ class Synchronizer:
                 self._add_file(project_to_sync, file)
 
     def _add_file(self, project: Path, file: Path) -> None:
+        """Queue a file for processing and register its hash in state.
+
+        Args:
+            project: Project directory containing the file.
+            file: File path to add.
+
+        """
         if project.name not in self.py_files_to_process:
             self.py_files_to_process[project.name] = []
         if project.name not in self.md_files_to_process:
@@ -151,6 +207,12 @@ class Synchronizer:
         self.rag_state.add_file_state(project, file_state)
 
     def _remove_files(self, files: list[Path]) -> None:
+        """Remove files from doc sources, backend index, and state.
+
+        Args:
+            files: List of file paths to remove.
+
+        """
         if not files:
             return
         for file in files:
@@ -162,6 +224,14 @@ class Synchronizer:
 
     @staticmethod
     def _recover_project_files(project_path: Path) -> tuple[list[Path], list[Path], list[Path]]:
+        """Collect supported file types recursively from a project.
+
+        Args:
+            project_path: Project directory to scan.
+
+        Returns:
+            Tuple containing Python, Markdown, and text file paths.
+        """
         py_files: list[Path] = []
         md_files: list[Path] = []
         txt_files: list[Path] = []
@@ -177,6 +247,9 @@ class Synchronizer:
         return py_files, md_files, txt_files
 
     def _update_std(self) -> None:
+        """Remove stale file entries from the document source store.
+
+        """
         paths_to_remove = {Path(p) for p in self.remove_from_docsrc}
 
         remaining_docs = {

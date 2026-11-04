@@ -11,9 +11,29 @@ from src.index import Chunker, PyC, MdC, TxtC, Sync
 
 
 class Indexer:
+    """Coordinate project synchronization, chunking, and indexing.
+
+    Attributes:
+        max_chunk_size: Maximum character count for generated chunks.
+        chunkers: Chunker instances keyed by file type.
+        mode: Retrieval mode controlling index backends to update.
+        path_finder: Path helper exposing project storage locations.
+        docsrc_store: In-memory map of document sources by identifier.
+        operators: Index operators keyed by backend type.
+        sync_bm25: Synchronizer for lexical backend state.
+        sync_vector: Synchronizer for vector backend state.
+    """
+
     __SUPPORTED_EXT: list[str] = [".py", ".md", ".txt"]
 
     def __init__(self, max_chunk_size: int = 2000, mode: RsrchType = RsrchType.LEXICAL) -> None:
+        """Initialize indexing orchestration components.
+
+        Args:
+            max_chunk_size: Chunk size upper bound used by chunkers.
+            mode: Retrieval mode selecting lexical, vector, or hybrid indexing.
+
+        """
         self.max_chunk_size: int = max_chunk_size
         if self.max_chunk_size < 250:
             print(IndexerError(ErrType.WRN, ValueError("'max_chunk_size' must be greater than 250, default to 2000")))
@@ -50,6 +70,9 @@ class Indexer:
         self.txt_files: dict[str, list[Path]] = {}
 
     def index(self) -> None:
+        """Run synchronization and indexing for configured backends.
+
+        """
         if self.mode == RsrchType.LEXICAL or self.mode == RsrchType.HYBRID:
             self.sync_bm25.check_projects()
             self._execute_pipeline(self.sync_bm25, self.operators["bm25"])
@@ -59,6 +82,13 @@ class Indexer:
             self._execute_pipeline(self.sync_vector, self.operators["vector"])
 
     def _execute_pipeline(self, synchronizer: Sync, operator: BM25Op | VectorOp) -> None:
+        """Execute chunking, document export, and backend indexing.
+
+        Args:
+            synchronizer: Synchronizer providing changed files for processing.
+            operator: Backend index operator to update with new documents.
+
+        """
         if any(files for files in synchronizer.py_files_to_process.values()):
             self.chunkers["py"].chunk_files(synchronizer.py_files_to_process)
         if any(files for files in synchronizer.md_files_to_process.values()):
@@ -81,6 +111,9 @@ class Indexer:
         operator.index(new_docs)
 
     def _load_doc_store(self) -> None:
+        """Load persisted document source metadata into memory.
+
+        """
         if self.path_finder.docsrc_path.exists():
             with open(self.path_finder.docsrc_path, "r", encoding="utf-8") as f:
                 raw_docs: list[dict] = json.load(f)

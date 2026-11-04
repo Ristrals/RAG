@@ -10,12 +10,27 @@ from src.lib.data_lib import ErrorType
 
 
 class PYChunker(Chunker):
+    """Chunker specialized for Python source files.
+
+    Attributes:
+        _code_nodes: Parsed top-level and class member nodes used to segment
+            Python source code.
+    """
+
     def __init__(self, max_chunk_size: int) -> None:
+        """Initialize a Python chunker.
+
+        Args:
+            max_chunk_size: Maximum number of characters allowed per chunk.
+
+        """
         super().__init__(max_chunk_size)
         self._code_nodes: list[CodeNode] = []
 
     def _chunk_file(self) -> None:
-        """Slices files into sections based on recovered sections"""
+        """Slice the current Python file by recovered AST sections.
+
+        """
 
         self._get_nodes()
 
@@ -44,7 +59,12 @@ class PYChunker(Chunker):
             )
 
     def _get_nodes(self) -> None:
-        """Recovers all MD file headers"""
+        """Parse source and recover chunkable code nodes.
+
+        Extracted nodes include top-level functions, class preambles,
+        and class methods.
+
+        """
 
         self._code_nodes = []
 
@@ -122,7 +142,14 @@ class PYChunker(Chunker):
                     ))
 
     def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Recovers essential elements and chunk"""
+        """Normalize a Python section and produce chunks.
+
+        Args:
+            content: Python section content to process.
+            start_index: Section start offset in the source file.
+            hierarchy: Hierarchical label associated with the section.
+
+        """
 
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
         raw_body: str = content
@@ -135,6 +162,11 @@ class PYChunker(Chunker):
         self._create_chunks(context_prefix, hierarchy, body)
 
     def _build_line_offsets(self) -> list[int]:
+        """Build cumulative line-start offsets for the current file.
+
+        Returns:
+            List of absolute offsets where each line starts.
+        """
         offsets = [0]
         current = 0
         for line in self._file_content.splitlines(keepends=True):

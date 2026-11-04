@@ -8,7 +8,17 @@ from src.lib import Chunk
 
 
 class Chunker(ABC):
-    """ Chunker class """
+    """Abstract base class for file chunking strategies.
+
+    Attributes:
+        max_chunk_size: Maximum number of characters allowed in a chunk.
+        _project_dir: Current project identifier being processed.
+        _files_list: Files queued for chunking in the current project.
+        _current_file_path: Path of the file currently being chunked.
+        _file_content: Raw content of the current file.
+        _index_cursor: Cursor tracking offsets in the current file.
+        chunks: Generated chunks accumulated during processing.
+    """
     def __init__(self, max_chunk_size: int) -> None:
         self.max_chunk_size: int = max_chunk_size
         self._project_dir: str = ""
@@ -19,7 +29,13 @@ class Chunker(ABC):
         self.chunks: list[Chunk] = []
 
     def chunk_files(self, files_dict: dict[str, list[Path]]) -> None:
-        """Chunk files into chunks"""
+        """Chunk all files grouped by project.
+
+        Args:
+            files_dict: Mapping of project identifiers to the list of files
+                that must be chunked.
+
+        """
 
         self.chunks.clear()
         for project, files in files_dict.items():
@@ -28,7 +44,9 @@ class Chunker(ABC):
             self._process_project_files()
 
     def _process_project_files(self) -> None:
-        """Processes project files"""
+        """Read and chunk every file in the current project.
+
+        """
 
         for file in self._files_list:
             self._index_cursor = 0
@@ -39,16 +57,35 @@ class Chunker(ABC):
 
     @abstractmethod
     def _chunk_file(self) -> None:
-        """Slices files into sections based on recovered indexation"""
+        """Slice the currently loaded file into semantic sections.
+
+        """
         pass
 
     @abstractmethod
     def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Chunking respective to max size chunking parameter"""
+        """Apply chunking logic to a section of file content.
+
+        Args:
+            content: Section content to chunk.
+            start_index: Starting offset of the section in the full file.
+            hierarchy: Hierarchical label describing section context.
+
+        """
         pass
 
     def _create_chunks(self, context_prefix: str, hierarchy: str, body: str) -> None:
-        """Chunking respective to max size chunking parameter with precise offset tracking"""
+        """Create one or more chunks from section content.
+
+        Splits content according to ``max_chunk_size`` while preserving
+        start/end offsets relative to the source file.
+
+        Args:
+            context_prefix: Prefix prepended to each chunk (metadata/context).
+            hierarchy: Hierarchical label associated with the section.
+            body: Raw section body to split into chunks.
+
+        """
 
         formated_chunk: str = context_prefix + body
         if len(formated_chunk) <= self.max_chunk_size:
@@ -114,7 +151,15 @@ class Chunker(ABC):
         self._index_cursor = current_body_cursor
 
     def _chunk_large_paragraphs(self, paragraph: str, hierarchy: str | None) -> list[Chunk]:
-        """Splits an oversized code block into sub-chunks"""
+        """Split an oversized paragraph into multiple chunk parts.
+
+        Args:
+            paragraph: Oversized text block that cannot fit in one chunk.
+            hierarchy: Optional hierarchy label to include in context.
+
+        Returns:
+            List of generated chunks representing paragraph parts.
+        """
 
         hierarchy_context_prefix: str = f"{hierarchy}" if hierarchy else ""
         paragraph_part: int = 1

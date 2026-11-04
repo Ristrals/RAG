@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+"""Path management utilities for indexing, retrieval, and state persistence."""
+
 from pathlib import Path
 
 from src.lib import ErrType
@@ -7,6 +9,19 @@ from src.utils import PathFinderError
 
 
 class PathFinder:
+    """Resolve and validate project paths used by the application.
+
+    Attributes:
+        raw_dir: Directory containing raw source projects to index.
+        processed_dir: Directory containing processed index artifacts.
+        state_dir: Directory containing synchronization state files.
+        bm25_dir: Lexical index directory.
+        vector_dir: Semantic index directory.
+        dataset_path: Optional dataset input path.
+        student_search_results_path: Optional student-results input path.
+        save_dir: Optional output directory for generated files.
+    """
+
     _DEFAULT_RAW_DIR = Path("data/raw")
     _DEFAULT_PROCESSED_DIR = Path("data/processed")
     _DEFAULT_STATE_DIR = Path("data/state")
@@ -16,6 +31,14 @@ class PathFinder:
         save_directory: Path | None = None,
         student_search_results_path: Path | None = None
     ) -> None:
+        """Initialize path configuration and validate provided inputs.
+
+        Args:
+            dataset_path: Optional dataset file to load.
+            save_directory: Optional directory where outputs are written.
+            student_search_results_path: Optional student-results file to load.
+
+        """
         self.raw_dir: Path = self._DEFAULT_RAW_DIR  # Raw project to chunk
         self.processed_dir: Path = self._DEFAULT_PROCESSED_DIR  # Indexed projects
         self.state_dir: Path = self._DEFAULT_STATE_DIR  # State sync
@@ -35,6 +58,9 @@ class PathFinder:
             self.secure_save_directory()
 
     def secure_index_directories(self) -> None:
+        """Create required indexing and state directories when missing.
+
+        """
         try:
             self.raw_dir.mkdir(parents=True, exist_ok=True)
             self.bm25_dir.mkdir(parents=True, exist_ok=True)
@@ -44,6 +70,9 @@ class PathFinder:
             raise PathFinderError(ErrType.CRIT, e)
 
     def secure_save_directory(self) -> None:
+        """Create the configured save directory when missing.
+
+        """
         assert isinstance(self.save_dir, Path)
         try:
             self.save_dir.mkdir(parents=True, exist_ok=True)
@@ -52,7 +81,12 @@ class PathFinder:
 
     @staticmethod
     def validate_file_reading(path: Path) -> None:
-        """Raises a FileNotFoundError if an expected input path does not exist."""
+        """Validate that an input path exists before reading.
+
+        Args:
+            path: File path expected to exist.
+
+        """
 
         if not path.exists():
             raise PathFinderError(
@@ -61,20 +95,25 @@ class PathFinder:
 
     @property
     def state_path(self) -> Path:
+        """Path to the generic RAG state file."""
         return self.state_dir / "rag_state.json"
 
     @property
     def rag_state_bm25_path(self) -> Path:
+        """Path to the lexical backend RAG state file."""
         return self.state_dir / "rag_state_bm25.json"
 
     @property
     def rag_state_vector_path(self) -> Path:
+        """Path to the semantic backend RAG state file."""
         return self.state_dir / "rag_state_vector.json"
 
     @property
     def docsrc_path(self) -> Path:
+        """Path to persisted document-source metadata."""
         return self.processed_dir / "std_index.json"
 
     @property
     def database_path(self) -> Path:
+        """Path to the SQLite BM25 database file."""
         return self.bm25_dir / "bm25.db"

@@ -1,3 +1,5 @@
+"""Standalone utility script to inspect lexical SQLite index contents."""
+
 import sqlite3
 from pathlib import Path
 

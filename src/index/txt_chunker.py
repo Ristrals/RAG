@@ -4,11 +4,21 @@ from src.index import Chunker
 
 
 class TxtChunker(Chunker):
+    """Chunker specialized for plain text files."""
+
     def __init__(self, max_chunk_size: int) -> None:
+        """Initialize a text chunker.
+
+        Args:
+            max_chunk_size: Maximum number of characters allowed per chunk.
+
+        """
         super().__init__(max_chunk_size)
 
     def _chunk_file(self) -> None:
-        """Slices plain text or code files without header or AST parsing"""
+        """Slice plain text content without structural parsing.
+
+        """
         self._chunk_process(
             content=self._file_content,
             start_index=0,
@@ -16,7 +26,14 @@ class TxtChunker(Chunker):
         )
 
     def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Recovers essential elements and proceeds to chunk"""
+        """Normalize plain text and produce chunks.
+
+        Args:
+            content: Text content to process.
+            start_index: Section start offset in the source file.
+            hierarchy: Optional hierarchy label associated with the section.
+
+        """
 
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
         raw_body: str = content

@@ -11,7 +11,27 @@ from src.retrieval import EvaluatorError
 
 
 class Evaluator:
+    """Evaluate student retrieval/answer outputs against ground truth.
+
+    Attributes:
+        path_finder: Path helper exposing dataset and results locations.
+        ground_truths: Parsed ground-truth dataset.
+        student_results: Parsed student results (search or answer mode).
+        is_answer_eval: True when evaluating answer payloads.
+        k: Configured retrieval count.
+        total_response: Total evaluated questions.
+        valid_response: Number of validated matches.
+        evaluation_str: Human-readable evaluation output.
+    """
+
     def __init__(self, path_finder: PathFinder, k: int) -> None:
+        """Initialize evaluator state.
+
+        Args:
+            path_finder: Path helper exposing required files.
+            k: Retrieval count used for evaluation context.
+
+        """
         self.path_finder = path_finder
         self.ground_truths: GrndTruthDs | None = None
         self.student_results: StuSrchRes | StuSrchResAns | None = None
@@ -22,9 +42,17 @@ class Evaluator:
         self.evaluation_str: str = ""
 
     def __str__(self) -> str:
+        """Return the formatted evaluation summary.
+
+        Returns:
+            Evaluation summary string.
+        """
         return self.evaluation_str
 
     def run_evaluation(self) -> None:
+        """Run full evaluation pipeline and build summary text.
+
+        """
         try:
             assert isinstance(self.path_finder.student_search_results_path, Path)
             with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:
@@ -75,10 +103,27 @@ class Evaluator:
         self._calculate_accuracy()
 
     def _get_ground_truth(self, question_id: str) -> GrndTruthQ | None:
+        """Return ground-truth entry matching a question id.
+
+        Args:
+            question_id: Question identifier to resolve.
+
+        Returns:
+            Matching ground-truth question or None.
+        """
         assert isinstance(self.ground_truths, GrndTruthDs)
         return next((gtq for gtq in self.ground_truths.rag_questions if gtq.question_id == question_id), None)
 
     def _evaluate(self, question: MinSrchRes, ground_truth: GrndTruthQ) -> str:
+        """Compare retrieved sources against one ground-truth entry.
+
+        Args:
+            question: Student search result for one question.
+            ground_truth: Reference ground-truth question entry.
+
+        Returns:
+            Evaluation status string: ``valid``, ``no_overlap``, or ``no_match``.
+        """
         valid_minimal_source = ground_truth.sources[0]
         for result in question.retrieved_sources:
             if result.file_path == valid_minimal_source.file_path:
@@ -95,9 +140,23 @@ class Evaluator:
         return "no_match"
 
     def _ranges_overlap(self, start1: int, end1: int, start2: int, end2: int) -> bool:
+        """Check whether two character ranges overlap.
+
+        Args:
+            start1: First range start offset.
+            end1: First range end offset.
+            start2: Second range start offset.
+            end2: Second range end offset.
+
+        Returns:
+            True when ranges overlap, otherwise False.
+        """
         return max(start1, start2) <= min(end1, end2)
 
     def _calculate_accuracy(self) -> None:
+        """Compute and append evaluation accuracy summary.
+
+        """
         if self.total_response == 0:
             accuracy = 0.0
         else:

@@ -12,7 +12,22 @@ from src.operators import OpType, OpErrType, operator_error_handler
 
 
 class BM25Operator:
+    """SQLite FTS5-based lexical indexing and retrieval operator.
+
+    Attributes:
+        path_finder: Path helper for storage and database locations.
+        docsrc_store: In-memory document source map keyed by document id.
+        _conn: SQLite connection to the BM25 index database.
+    """
+
     def __init__(self, path_finder: PathFinder, docsrc_store: dict[str, DocSrc]) -> None:
+        """Initialize the BM25 operator and open the database connection.
+
+        Args:
+            path_finder: Path helper exposing index directories.
+            docsrc_store: Document source map used during indexing.
+
+        """
         self.path_finder = path_finder
         self.docsrc_store: dict[str, DocSrc] = docsrc_store
         self._conn: sqlite3.Connection | None = None
@@ -21,7 +36,13 @@ class BM25Operator:
     @operator_error_handler(OpType.BM25, OpErrType.IND)
     @log_execution_time
     def index(self, target_docs: dict[str, DocSrc] | None = None) -> None:
-        """True incremental indexing: upserts only the target_docs in O(delta) time."""
+        """Index or upsert lexical documents into SQLite FTS5.
+
+        Args:
+            target_docs: Optional subset of document sources to index.
+                When omitted, indexes all documents in the store.
+
+        """
 
         if target_docs is not None and len(target_docs) == 0:
             return
@@ -60,6 +81,9 @@ class BM25Operator:
                     pbar.update(len(batch_data))
 
     def connect(self) -> None:
+        """Create the SQLite FTS5 database and table when needed.
+
+        """
         if self._conn is None:
             self.path_finder.bm25_dir.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(str(self.path_finder.database_path))
@@ -77,7 +101,15 @@ class BM25Operator:
 
     @operator_error_handler(OpType.BM25, OpErrType.SRCH)
     def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
-        """Scores query using SQLite FTS5 built-in BM25 ranking."""
+        """Run lexical search using SQLite FTS5 BM25 scoring.
+
+        Args:
+            query: Query string to search.
+            k: Maximum number of results to return.
+
+        Returns:
+            List of ``(document_id, score)`` pairs sorted by score.
+        """
 
         assert isinstance(self._conn, sqlite3.Connection)
         s_cursor = self._conn.cursor()
@@ -112,7 +144,12 @@ class BM25Operator:
 
     @operator_error_handler(OpType.BM25, OpErrType.DEL)
     def delete(self, file_paths: Path | list[Path] | list[str] | set[Path]) -> None:
-        """Surgically deletes chunks associated with file_path(s) in O(delta) time."""
+        """Delete indexed chunks associated with one or more file paths.
+
+        Args:
+            file_paths: Single path or collection of paths to remove.
+
+        """
         if isinstance(file_paths, Path):
             paths_to_remove = {str(file_paths)}
         else:

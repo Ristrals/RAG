@@ -21,12 +21,31 @@ from src.retrieval import OracleError
 
 
 class Oracle:
+    """Generate answers from retrieved sources using a causal language model.
+
+    Attributes:
+        path_finder: Path helper exposing dataset and result locations.
+        doc_store: Document source map keyed by document id.
+        k: Number of retrieval results expected per question.
+        tokenizer: Tokenizer used to format and encode prompts.
+        model: Causal language model used for answer generation.
+    """
+
     def __init__(
         self, path_finder: PathFinder,
         doc_store: dict[str, DocSrc],
         k: int = 10,
         model_name: str = "Qwen/Qwen3-0.6B"
     ) -> None:
+        """Initialize tokenizer and model for answer generation.
+
+        Args:
+            path_finder: Path helper exposing required file locations.
+            doc_store: In-memory document source map.
+            k: Number of sources associated with each query.
+            model_name: Pretrained model identifier.
+
+        """
 
         self.path_finder: PathFinder = path_finder
         self.doc_store: dict[str, DocSrc] = doc_store
@@ -39,6 +58,14 @@ class Oracle:
         )
 
     def answer(self, minimal_srch_res: MinSrchRes) -> MinAns:
+        """Generate an answer for one retrieved-question payload.
+
+        Args:
+            minimal_srch_res: Search result containing question and sources.
+
+        Returns:
+            Answer payload with generated text.
+        """
         snippets: list[str] = []
 
         for minimal_source in minimal_srch_res.retrieved_sources:
@@ -92,6 +119,11 @@ class Oracle:
         )
 
     def answer_set(self) -> StuSrchResAns:
+        """Generate answers for every question in student results.
+
+        Returns:
+            Dataset answer payload for all questions.
+        """
         answer_list: list[MinAns] = []
         result = self._load_student_result()
 
@@ -112,6 +144,14 @@ class Oracle:
 
     @staticmethod
     def _recover_snippets(minimal_source: MinSrc) -> str:
+        """Recover a source snippet from indexed character boundaries.
+
+        Args:
+            minimal_source: Minimal source metadata with file path and range.
+
+        Returns:
+            Sliced text snippet from the referenced file.
+        """
         return Oracle._cached_file_slice(
             str(minimal_source.file_path),
             minimal_source.first_character_index,
@@ -121,13 +161,27 @@ class Oracle:
     @staticmethod
     @lru_cache(maxsize=1024)
     def _cached_file_slice(file_path: str, start: int, end: int) -> str:
-        """Caches file reads and character slicing to avoid redundant disk I/O."""
+        """Cache file slicing to reduce repeated disk I/O.
+
+        Args:
+            file_path: Source file path.
+            start: Inclusive start character offset.
+            end: Exclusive end character offset.
+
+        Returns:
+            Extracted text segment.
+        """
         path = Path(file_path)
         with open(path, "r", encoding="utf-8") as f:
             file_text = f.read()
         return file_text[start:end]
 
     def _load_student_result(self) -> StuSrchRes:
+        """Load and validate student search results from disk.
+
+        Returns:
+            Parsed student search results payload.
+        """
         try:
             assert isinstance(self.path_finder.student_search_results_path, Path)
             with open(self.path_finder.student_search_results_path, "r", encoding="utf-8") as f:

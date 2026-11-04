@@ -10,6 +10,21 @@ from src.lib import RsrchType, Tc, ErrType, MinSrchRes, MinAns, StuSrchRes, StuS
 
 
 class Engine:
+    """High-level orchestration for search, answer, and evaluation workflows.
+
+    Attributes:
+        mode: Retrieval mode used by underlying components.
+        user_query: Optional query text for single-query operations.
+        k: Number of retrieval results to use.
+        save_directory: Optional output directory for dataset operations.
+        model_name: Language model identifier used by the oracle.
+        path_finder: Path helper exposing dataset and storage locations.
+        docsrc_store: In-memory document source map.
+        retriever: Retrieval component.
+        oracle: Answer-generation component.
+        evaluator: Evaluation component.
+    """
+
     def __init__(
         self, mode: RsrchType = RsrchType.LEXICAL,
         user_query: str | None = None,
@@ -19,6 +34,18 @@ class Engine:
         k: int = 10,
         model_name: str = "Qwen/Qwen3-0.6B"
     ) -> None:
+        """Initialize the retrieval engine and subcomponents.
+
+        Args:
+            mode: Retrieval mode (lexical, vector, or hybrid).
+            user_query: Optional query used by single-query operations.
+            save_directory: Optional directory to write output files.
+            dataset_path: Optional dataset path for batch search/evaluation.
+            student_search_results_path: Optional student results path.
+            k: Number of retrieval results to use.
+            model_name: Language model identifier for answer generation.
+
+        """
 
         self.mode: RsrchType = mode
         self.user_query: str | None = user_query
@@ -39,6 +66,11 @@ class Engine:
         self.evaluator: Evaluator = Evaluator(self.path_finder, self.k)
 
     def run_single_search(self) -> MinSrchRes:
+        """Execute retrieval for a single query and print source matches.
+
+        Returns:
+            Minimal search results for the configured query.
+        """
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         to_print: str = f"\n{Tc.ylw}[SINGLE RESEARCH]{Tc.clr}\n"
@@ -57,6 +89,11 @@ class Engine:
         return results
 
     def run_single_answer(self) -> MinAns:
+        """Execute retrieval plus answer generation for a single query.
+
+        Returns:
+            Minimal answer payload including retrieved sources.
+        """
         assert isinstance(self.user_query, str)
         results: MinSrchRes = self.retriever.research(None, self.user_query)
         answer: MinAns = self.oracle.answer(results)
@@ -77,6 +114,11 @@ class Engine:
         return answer
 
     def run_set_search(self) -> StuSrchRes:
+        """Run retrieval over a dataset and persist the results file.
+
+        Returns:
+            Dataset search results payload.
+        """
         result: StuSrchRes = self.retriever.research_set()
         assert isinstance(self.path_finder.save_dir, Path)
         assert isinstance(self.path_finder.dataset_path, Path)
@@ -86,6 +128,11 @@ class Engine:
         return result
 
     def run_set_answer(self) -> StuSrchResAns:
+        """Run answer generation over a dataset and persist output.
+
+        Returns:
+            Dataset answer results payload.
+        """
         answer: StuSrchResAns = self.oracle.answer_set()
         assert isinstance(self.path_finder.save_dir, Path)
         assert isinstance(self.path_finder.student_search_results_path, Path)
@@ -95,11 +142,19 @@ class Engine:
         return answer
 
     def evaluate(self) -> str:
+        """Evaluate student outputs against the ground-truth dataset.
+
+        Returns:
+            Human-readable evaluation summary string.
+        """
         self.evaluator.run_evaluation()
         print(self.evaluator)
         return self.evaluator.evaluation_str
 
     def purge_index(self) -> None:
+        """Delete index and state artifacts for the active retrieval mode.
+
+        """
         index_folder: Path = Path()
         rag_state_file: Path = Path()
 
@@ -118,6 +173,13 @@ class Engine:
 
     @staticmethod
     def _remove_data(folder: Path, rag_file: Path | None = None) -> None:
+        """Remove an index directory and optional state file.
+
+        Args:
+            folder: Directory to remove recursively.
+            rag_file: Optional state file to delete.
+
+        """
         try:
             if folder.exists():
                 shutil.rmtree(folder)
@@ -128,6 +190,9 @@ class Engine:
         pass
 
     def _load_doc_store(self) -> None:
+        """Load persisted document-source metadata into memory.
+
+        """
         if self.path_finder.docsrc_path.exists():
             with open(self.path_finder.docsrc_path, "r", encoding="utf-8") as f:
                 raw_docs: list[dict] = json.load(f)

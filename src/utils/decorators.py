@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+"""Shared decorators for runtime instrumentation and helper behavior."""
+
 import time
 from collections.abc import Callable
 from typing import ParamSpec, TypeVar
@@ -13,6 +15,14 @@ R = TypeVar("R")
 
 # Time log
 def log_execution_time(func: Callable[P, R]) -> Callable[P, R]:
+    """Measure and print execution time for a wrapped callable.
+
+    Args:
+        func: Callable to execute with timing instrumentation.
+
+    Returns:
+        Wrapped callable preserving the original signature.
+    """
 
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:

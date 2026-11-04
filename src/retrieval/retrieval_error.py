@@ -5,11 +5,30 @@ from json import JSONDecodeError
 
 
 class RetrieverError(Exception):
+    """Error raised during retrieval operations.
+
+    Attributes:
+        err_type: Severity level for error reporting.
+        err: Underlying exception instance.
+    """
+
     def __init__(self, err_type: ErrType, err: Exception) -> None:
+        """Initialize a retriever error wrapper.
+
+        Args:
+            err_type: Severity for message formatting.
+            err: Underlying exception.
+
+        """
         self.err_type: ErrType = err_type
         self.err: Exception = err
 
     def __str__(self) -> str:
+        """Return a formatted and colorized error message.
+
+        Returns:
+            Human-readable retriever error details.
+        """
         msg = ""
         match self.err_type:
             case ErrType.CRIT: msg += f"{Tc.red}[!] Caught Critical RetrieverError{Tc.clr}:\n"
@@ -21,11 +40,30 @@ class RetrieverError(Exception):
 
 
 class OracleError(Exception):
+    """Error raised during answer generation operations.
+
+    Attributes:
+        err_type: Severity level for error reporting.
+        err: Underlying exception instance.
+    """
+
     def __init__(self, err_type: ErrType, err: Exception) -> None:
+        """Initialize an oracle error wrapper.
+
+        Args:
+            err_type: Severity for message formatting.
+            err: Underlying exception.
+
+        """
         self.err_type: ErrType = err_type
         self.err: Exception = err
 
     def __str__(self) -> str:
+        """Return a formatted and colorized error message.
+
+        Returns:
+            Human-readable oracle error details.
+        """
         msg = ""
         match self.err_type:
             case ErrType.CRIT: msg += f"{Tc.red}[!] Caught Critical OracleError{Tc.clr}:\n"
@@ -37,12 +75,33 @@ class OracleError(Exception):
 
 
 class EvaluatorError(Exception):
+    """Error raised during evaluation of retrieval or answer outputs.
+
+    Attributes:
+        err_type: Severity level for error reporting.
+        err: Underlying exception instance.
+        specific: Context flag identifying failing input source.
+    """
+
     def __init__(self, err_type: ErrType, err: Exception, specific: int) -> None:
+        """Initialize an evaluator error wrapper.
+
+        Args:
+            err_type: Severity for message formatting.
+            err: Underlying exception.
+            specific: Context discriminator for schema validation errors.
+
+        """
         self.err_type: ErrType = err_type
         self.err: Exception = err
         self.specific: int = specific
 
     def __str__(self) -> str:
+        """Return a formatted and colorized error message.
+
+        Returns:
+            Human-readable evaluator error details.
+        """
         msg = ""
         match self.err_type:
             case ErrType.CRIT: msg += f"{Tc.red}[!] Caught Critical EvaluatorError{Tc.clr}:\n"
@@ -57,11 +116,30 @@ class EvaluatorError(Exception):
 
 
 class EngineError(Exception):
+    """Error raised by retrieval engine orchestration operations.
+
+    Attributes:
+        err_type: Severity level for error reporting.
+        err: Underlying exception instance.
+    """
+
     def __init__(self, err_type: ErrType, err: Exception) -> None:
+        """Initialize an engine error wrapper.
+
+        Args:
+            err_type: Severity for message formatting.
+            err: Underlying exception.
+
+        """
         self.err_type: ErrType = err_type
         self.err: Exception = err
 
     def __str__(self) -> str:
+        """Return a formatted and colorized error message.
+
+        Returns:
+            Human-readable engine error details.
+        """
         msg = ""
         match self.err_type:
             case ErrType.CRIT: msg += f"{Tc.red}[!] Caught Critical EngineError{Tc.clr}:\n"

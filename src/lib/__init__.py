@@ -1,5 +1,7 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
+"""Public exports for shared data models, enums, and interface payloads."""
+
 from src.lib.data_lib import (
     TextColors as Tc,
     CodeNode,

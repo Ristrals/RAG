@@ -31,6 +31,15 @@ class TextColors:
 
 @dataclass
 class HeaderNode:
+    """Markdown header metadata extracted during parsing.
+
+    Attributes:
+        level: Header depth level from 1 to 6.
+        title: Header title text.
+        start_index: Character offset where the header starts.
+        hierarchy: Full hierarchical path for the header.
+    """
+
     level: int
     title: str
     start_index: int
@@ -39,6 +48,16 @@ class HeaderNode:
 
 @dataclass
 class CodeNode:
+    """Python code section metadata extracted from AST.
+
+    Attributes:
+        name: Node display name.
+        node_type: Node category such as function or method.
+        start_index: Character offset where the section starts.
+        end_index: Character offset where the section ends.
+        hierarchy: Hierarchical label of the section.
+    """
+
     name: str
     node_type: str  # "class", "function", "method", "preamble"
     start_index: int
@@ -48,6 +67,17 @@ class CodeNode:
 
 @dataclass
 class Chunk:
+    """Chunked text segment with source location metadata.
+
+    Attributes:
+        content: Chunk text content.
+        start_index: Start offset in the source file.
+        end_index: End offset in the source file.
+        hierarchy: Section hierarchy associated with the chunk.
+        file_path: Source file path.
+        project: Source project identifier.
+    """
+
     content: str
     start_index: int
     end_index: int
@@ -57,17 +87,23 @@ class Chunk:
 
 
 class ResearchType(Enum):
+    """Supported retrieval modes for indexing and search."""
+
     LEXICAL = "lexical"
     VECTOR = "vector"
     HYBRID = "hybrid"
 
 
 class ErrorType(Enum):
+    """Supported error severity levels."""
+
     WRN = "WARNING"
     CRIT = "CRITICAL"
 
 
 class StopWords:
+    """Default stop-word list used for lexical preprocessing."""
+
     STOP_WORDS = {
         "a", "about", "above", "after", "again", "against", "all", "am", "an", "and",
         "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being",

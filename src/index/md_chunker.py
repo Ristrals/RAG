@@ -7,13 +7,28 @@ from src.lib import HeaderNode
 
 
 class MDChunker(Chunker):
+    """Chunker specialized for Markdown files.
+
+    Attributes:
+        _headers: Parsed Markdown headers with hierarchy metadata.
+        _in_code_block: Toggle used to ignore headers inside fenced code blocks.
+    """
+
     def __init__(self, max_chunk_size: int) -> None:
+        """Initialize a Markdown chunker.
+
+        Args:
+            max_chunk_size: Maximum number of characters allowed per chunk.
+
+        """
         super().__init__(max_chunk_size)
         self._headers: list[HeaderNode] = []
         self._in_code_block: bool = False
 
     def _chunk_file(self) -> None:
-        """Slices files into sections based on recovered headers"""
+        """Slice the current Markdown file by header sections.
+
+        """
 
         self._get_headers()
 
@@ -44,7 +59,9 @@ class MDChunker(Chunker):
             )
 
     def _get_headers(self) -> None:
-        """Recovers all MD file headers"""
+        """Parse Markdown headers while respecting fenced code blocks.
+
+        """
 
         self._headers = []
         self._in_code_block = False
@@ -71,7 +88,14 @@ class MDChunker(Chunker):
             current_offset += len(line)
 
     def _chunk_process(self, content: str, start_index: int, hierarchy: str) -> None:
-        """Recovers essential elements and proceeds to chunk"""
+        """Normalize section text and produce chunks.
+
+        Args:
+            content: Markdown section content to process.
+            start_index: Section start offset in the source file.
+            hierarchy: Header hierarchy associated with the section.
+
+        """
 
         context_prefix: str = f"# Context: {hierarchy}\n\n" if hierarchy else ""
         lines: list[str] = content.splitlines(keepends=True)
@@ -87,7 +111,15 @@ class MDChunker(Chunker):
         self._create_chunks(context_prefix, hierarchy, body)
 
     def _is_header(self, line: str) -> tuple[int, str] | None:
-        """Checks if a line is a header and returns its level and title if true"""
+        """Check whether a line is a valid Markdown ATX header.
+
+        Args:
+            line: Source line to inspect.
+
+        Returns:
+            Tuple of ``(level, title)`` when the line is a header,
+            otherwise ``None``.
+        """
 
         stripped_line = line.strip()
         if not stripped_line.startswith("#"):

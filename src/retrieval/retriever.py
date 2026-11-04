@@ -21,6 +21,17 @@ from src.retrieval import RetrieverError
 
 
 class Retriever:
+    """Retrieve relevant sources using lexical, semantic, or hybrid search.
+
+    Attributes:
+        _C: Reciprocal-rank fusion constant for hybrid ranking.
+        path_finder: Path helper for dataset and storage locations.
+        mode: Retrieval mode (lexical, vector, or hybrid).
+        k: Number of results to return.
+        docsrc_store: Document source map keyed by document id.
+        null_score: Flag indicating empty or null-score retrieval outputs.
+    """
+
     _C = 60
 
     def __init__(
@@ -29,6 +40,15 @@ class Retriever:
         docsrc_store: dict[str, DocSrc],
         k: int = 10,
     ) -> None:
+        """Initialize retrieval backends for the selected mode.
+
+        Args:
+            path_finder: Path helper exposing dataset and index locations.
+            mode: Retrieval mode to run.
+            docsrc_store: In-memory document source map.
+            k: Maximum number of sources to retrieve.
+
+        """
 
         self.path_finder = path_finder
         self.mode = mode
@@ -43,6 +63,15 @@ class Retriever:
             self.vector_op.load()
 
     def research(self, question_id: str | None, question_text: str) -> MinSrchRes:
+        """Run retrieval for a single question.
+
+        Args:
+            question_id: Optional question identifier.
+            question_text: Query text to retrieve against.
+
+        Returns:
+            Minimal search result with retrieved source references.
+        """
         raw_results: list[tuple[str, float]] = []
         retrieved_sources: list[MinSrc] = []
 
@@ -80,6 +109,11 @@ class Retriever:
         )
 
     def research_set(self) -> StuSrchRes:
+        """Run retrieval across all questions in the configured dataset.
+
+        Returns:
+            Student search results payload for the full dataset.
+        """
         try:
             assert isinstance(self.path_finder.dataset_path, Path)
             self.path_finder.validate_file_reading(self.path_finder.dataset_path)
@@ -105,6 +139,15 @@ class Retriever:
             self, bm25_res: list[tuple[str, float]],
             vector_res: list[tuple[str, float]]
     ) -> list[tuple[str, float]]:
+        """Fuse lexical and vector rankings with reciprocal-rank fusion.
+
+        Args:
+            bm25_res: Ranked lexical results.
+            vector_res: Ranked semantic results.
+
+        Returns:
+            Top-k fused ``(document_id, score)`` pairs.
+        """
         rrf_scores: dict[str, float] = {}
 
         for rank, (doc_id, _) in enumerate(bm25_res, start=1):
