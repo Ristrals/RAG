@@ -50,7 +50,7 @@ class Oracle:
         self.path_finder: PathFinder = path_finder
         self.doc_store: dict[str, DocSrc] = doc_store
         self.k: int = k
-        self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer: PreTrainedTokenizerFast = AutoTokenizer.from_pretrained(model_name)  # type: ignore[assignment]
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
@@ -101,7 +101,7 @@ class Oracle:
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
         try:
             with torch.no_grad():
-                generated_ids = self.model.generate(
+                generated_ids = self.model.generate(  # type: ignore[misc]
                     **model_inputs,
                     max_new_tokens=512,
                     temperature=0.0,  # Deterministic output
@@ -109,7 +109,8 @@ class Oracle:
                 )
 
             output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
-            answer_text = self.tokenizer.decode(output_ids, skip_special_tokens=True).strip()
+            decoded = self.tokenizer.decode(output_ids, skip_special_tokens=True)
+            answer_text = decoded.strip() if isinstance(decoded, str) else decoded[0].strip()
         except Exception as e:
             raise OracleError(ErrType.CRIT, e)
 

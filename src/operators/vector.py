@@ -62,7 +62,7 @@ class VectorOperator:
             self._client = chromadb.PersistentClient(path=str(self.path_finder.vector_dir))
             self._collection = self._client.get_or_create_collection(
                 name=self.collection_name,
-                embedding_function=self.embedding_func,
+                embedding_function=self.embedding_func,  # type: ignore[arg-type]
                 metadata={"hnsw:space": "cosine"},
             )
 
@@ -119,7 +119,7 @@ class VectorOperator:
                 collection.upsert(
                     ids=batch_ids,
                     documents=batch_documents,
-                    metadatas=batch_metadatas,
+                    metadatas=batch_metadatas,  # type: ignore[arg-type]
                 )
                 pbar.update(len(batch_ids))
 
@@ -162,7 +162,10 @@ class VectorOperator:
 
         result: list[tuple[str, float]] = []
         ids = results["ids"][0]
-        distances = results["distances"][0] if results.get("distances") else []
+        distances = []
+        raw_distances = results.get("distances")
+        if raw_distances is not None and len(raw_distances) > 0:
+            distances = raw_distances[0]
 
         for doc_id, dist in zip(ids, distances):
             score = 1.0 - float(dist)
@@ -190,5 +193,5 @@ class VectorOperator:
         assert isinstance(self._collection, chromadb.Collection)
 
         self._collection.delete(
-            where={"file_path": {"$in": paths_to_remove}}
+            where={"file_path": {"$in": paths_to_remove}}  # type: ignore[dict-item]
         )

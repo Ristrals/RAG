@@ -1,17 +1,11 @@
 # RAGAgainstTheMachine - 42Luxembourg 2026 - kmalfois
 
-"""CLI entrypoint for the RAGAgainstTheMachine application."""
-
-import os
-
-os.environ["TRANSFORMERS_VERBOSITY"] = "error"
-os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
-
-import fire  # noqa: E402
-from fire.core import FireError  # noqa: E402
-from src.lib import Tc  # noqa: E402
-from src.interface.cli import RAGCLI  # noqa: E402
-from src import (  # noqa: E402
+import logging
+import fire
+from fire.core import FireError
+from src.lib import Tc
+from src.interface.cli import RAGCLI
+from src import (
     OperatorError,
     RetrieverError,
     OracleError,
@@ -20,12 +14,13 @@ from src import (  # noqa: E402
     PathFinderError,
     InterfaceError
 )
+# Silences transformers warnings
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
 def main() -> None:
-    """Run the Fire CLI and handle known application exceptions.
+    """Run the Fire CLI and handle known application exceptions."""
 
-    """
     try:
         fire.Fire(RAGCLI)
     except (
