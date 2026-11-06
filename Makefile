@@ -1,18 +1,14 @@
 PC = python3
 
 run:
-	uv run $(PC) -m src
-
-index:
 	uv run $(PC) -m src index 2000
+	uv run $(PC) -m src answer "What is vLLM?" 5
 
 debug:
-	uv run $(PC) -m pdb -m src
+	uv run $(PC) -m pdb -m src index 2000
+	uv run $(PC) -m pdb -m src answer "What is vLLM?" 5
 
 install:
-	uv venv
-
-sync:
 	uv sync
 
 clean:
@@ -23,10 +19,6 @@ purge:
 	rm -rf data/processed
 	rm -rf data/output
 	rm -rf data/state
-
-purge_lexical:
-	rm -rf data/processed/lexical
-	rm -rf data/state/rag_state_bm25.json
 
 fclean: clean purge
 	rm -rf .venv
@@ -46,11 +38,3 @@ f8:
 lint-strict:
 	flake8
 	mypy . --strict
-
-docs:
-	uv run python3 src search_dataset data/datasets/private/UnansweredQuestions/dataset_docs_private.json 5 data/output/UnansweredQuestion
-	uv run python3 src evaluate data/output/UnansweredQuestion/dataset_docs_private.json data/datasets/private/AnsweredQuestions/dataset_docs_private.json
-
-code:
-	uv run python3 src search_dataset data/datasets/private/UnansweredQuestions/dataset_code_private.json 5 data/output/UnansweredQuestion
-	uv run python3 src evaluate data/output/UnansweredQuestion/dataset_code_private.json data/datasets/private/AnsweredQuestions/dataset_code_private.json
