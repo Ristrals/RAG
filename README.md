@@ -5,27 +5,25 @@
 -------------------------------------------------------------------------------
 # DESCRIPTION
 
-RAG against the Machine is a project that feeds a Language Model with relevant
+RAG Against the Machine is a project that feeds a Language Model with relevant
 data from a source and ensures it can operate on that source without
 pre-training.
 
-In our specific case, the source is an entire program, and the sLM acts as an
-assistant. It can answer questions about Python
-(.py), Markdown (.md) and Text (.txt) files.
+In our specific case, the source is an entire codebase, and the sLM acts as an
+assistant capable of answering questions about Python (`.py`), Markdown
+(`.md`), and Text (`.txt`) files.
 
 To achieve that goal, our program pre-processes existing code and
 documentation to retrieve the right snippets that allow the Language
 Model to formulate a proper response.
 
-Two pipelines are used to recover those snippets. \
-The main pipeline performs lexical indexing through a BM25 algorithm managed
-by SQLite's FTS5. \
-The second pipeline (bonus) performs vector-based semantic indexing using
-an embedding model (BAAI/bge-small-en-v1.5 by default), stored in a ChromaDB
-collection.
+Two pipelines are used to recover those snippets:
+- **Main Pipeline:** Lexical indexing using a BM25 algorithm managed by
+SQLite's FTS5.
+- **Bonus Pipeline:** Vector-based semantic indexing using an embedding model
+(`BAAI/bge-small-en-v1.5` by default), stored in a ChromaDB collection.
 
-Finally, a Qwen/Qwen3-0.6B model generates answers based on the
-recovered snippets.
+Finally, a `Qwen/Qwen3-0.6B` model generates answers based on the recovered snippets.
 
 -------------------------------------------------------------------------------
 # INSTRUCTIONS
@@ -155,26 +153,24 @@ make debug  # same action through debug tool
 # CHUNKING STRATEGY
 
 ```bash
-uv run python3 src index 2000  # max_chunk_size
+uv run python3 -m src index 2000  # max_chunk_size
 ```
-Chunking happens during indexing and is parameterized by the ```max_chunk_size```
+Chunking happens during indexing and is parameterized by the `max_chunk_size`
 argument. \
-Content will be sliced following its respective structure, including preambles,
-then re-processed to fit the ```max_chunk_size``` character limit if necessary. \
-A '*# Context*' header will also be integrated at the top of every chunk, allowing
-Operators to keep the context of a source when searching for the right snippets.
+Content is sliced following its respective structure (including preambles)
+and re-processed to fit the `max_chunk_size` character limit if necessary. \
+A `# Context` header is also integrated at the top of every chunk, allowing
+operators to maintain source context when searching for the right snippets.
 
 ## Python
-
-Python files are sliced using the native Python AST library. \
-AST splits classes, methods, and functions to ensure Python code is well
-processed by Operators, with help from the contextual header.
+Python files are sliced using the native Python `ast` library. \
+AST parses classes, methods, and functions to ensure Python code is properly
+structured and processed by operators alongside the contextual header.
 
 ## Markdown & Text
-
-Text files are sliced into chunks of predefined character length, while Markdown
-files are organized by titles and subtitles according to their '#' based
-hierarchy using a custom script.
+While plain text files are sliced into chunks of a predefined character length,
+Markdown files are organized by titles and subtitles according to their
+`#`-based hierarchy using a custom parsing script.
 
 -------------------------------------------------------------------------------
 # RETRIEVAL METHOD
@@ -188,81 +184,94 @@ are interpreted here to call the right components and answer the user's request.
 ## Retriever
 The Retriever is responsible for recovering relevant snippets.
 
-It takes the user's query and the desired number of sources ```k``` as
-arguments to pinpoint the right snippets returned by Operators.\
-With the bonus pipeline, retrieval can be based on lexical, semantic, or
+It takes the user's query and the desired number of sources (`k`) as
+arguments to pinpoint the correct snippets returned by operators. \
+With the bonus pipeline enabled, retrieval can be based on lexical, semantic, or
 hybrid scoring.
 
 ## Oracle
-Oracle manages the sLM's response to a user query.
+The Oracle manages the sLM's response to a user query.
 
-The Oracle calls the Retriever to gather the right snippets.\
-Once done, it sends a precise prompt to Qwen to ensure a clear and
-concise answer based on the provided sources.
+It calls the Retriever to gather the relevant snippets. \
+Once gathered, it sends a precise prompt to Qwen to ensure a clear and
+concise answer based strictly on the provided sources.
 
 ## Evaluator
 The Evaluator compares the ground-truth JSON provided in the subject
-with the result JSON file obtained by a search_dataset or answer_dataset command.\
-The evaluation is printed directly in the terminal.
+with the result JSON file obtained via a `search_dataset` or `answer_dataset` command. \
+The evaluation score is printed directly to the terminal.
 
 -------------------------------------------------------------------------------
 # PERFORMANCE ANALYSIS
 
-Performance is affected by many different parameters.
+Performance is affected by several different parameters.
 
-```recall@k``` and ```max_chunk_size``` both impact the quality of the result. \
-Give the sLM too many or too large sources and it might drown in superfluous
-context, while the opposite threatens answer integrity if the right
-text chunk is not retrieved.
+Both `recall@k` and `max_chunk_size` heavily impact result quality. \
+Providing the sLM with too many or excessively large sources can drown it in
+superfluous context, while overly restrictive limits threaten answer integrity
+if the correct text chunk is not retrieved.
 
-BM25's indexing and retrieval can also be affected by specific element weights.\
-Separating context and content and playing with their effective weight
-attributions has clearly been decisive in reaching the 80% threshold required
+BM25 indexing and retrieval are also influenced by specific element weights. \
+Separating context from content and tuning their effective weights
+was decisive in reaching the 80% threshold required
 by the subject. \
-Removing stop words from the user's query also improved
+Additionally, removing stop words from user queries noticeably improved
 accuracy.
 
 -------------------------------------------------------------------------------
 # DESIGN DECISIONS
 
 ## BM25
-We chose BestMatch25 over TF-IDF for its superior methodology, and thus
-retrieval accuracy. \
-The first BM25 engine used was the bm25s library, but after use-case testing,
-SQLite's integrated FTS5 proved to be a better and more flexible solution,
-especially when it comes to incremental indexing.
+I chose BestMatch25 over TF-IDF for its superior methodology and retrieval 
+accuracy.
+
+While TF-IDF simply counts word iterations in a given text, BM25 incorporates
+three key parameters into its scoring algorithm:
+- Term frequency
+- Diminishing returns on word frequency saturation
+- Document length normalization
+
+Thanks to these mechanisms, BM25 remains one of the leading retrieval methods
+used to date for relevant text retrieval.
+
+The first BM25 engine we used was the `bm25s` library, but after practical
+use-case testing, SQLite's integrated FTS5 proved to be a better and more
+flexible solution, especially when handling incremental indexing.
 
 ## ChromaDB
-The best solution for a project of this scale regarding vector based RAG is
-ChromaDB for its integrated features. \
-At first, the embedding model used was ```all-MiniLM-L6-v2```, as suggested
-in the subject, but due to its token limitations, we ended up using
-```BAAI/bge-small-en-v1.5```. The result is longer but more accurate indexing.
+ChromaDB was chosen for vector-based RAG due to its robust integrated features
+and suitability for a project of this scale. 
 
-## FastAPI
+Initially, the embedding model used was `all-MiniLM-L6-v2` (as suggested in the
+subject), but due to token/context limitations, we transitioned to
+`BAAI/bge-small-en-v1.5`. While this results in slightly longer indexing times, it yields significantly higher retrieval accuracy.
 
-```FastAPI``` is our solution of choice for the bonus HTTP API interface. \
-It can be launched using ```uv run python3 src serve``` and by visiting
-```http://127.0.0.1:8000/docs``` in your web browser. \
-It is then possible to test all commands from the generated Swagger UI.
+## FastAPI & Uvicorn
+FastAPI and Uvicorn are our choices of framework for the bonus HTTP API
+interface.
+
+It can be launched using `uv run python3 -m src serve` and accessed by
+visiting `http://127.0.0.1:8000/docs` in your web browser. All commands can
+then be tested interactively via the generated Swagger UI.
 
 ## Incremental Indexing
 
-This feature is managed by the Synchronizer of the index module. \
-Consulting RAG_state files in the ```data/state``` folder, this script acts as
-a gatekeeper, asserting which files have been added, modified, or removed from a
-project.
+This feature is managed by the `Synchronizer` component within the index module. 
+
+By checking RAG state files stored in the `data/state` folder, this script acts
+as a gatekeeper, determining which files have been added, modified, or removed
+from the project since the last index run.
 
 
 -------------------------------------------------------------------------------
 # CHALLENGES FACED
 
-The real challenge of this project came from the **80% document retrieval score**. \
-Finding solutions to score those last points and reach the demanded threshold
-was tedious but also both fun and interesting.\
-Discovering and understanding the various methods used in RAG to enhance
-accuracy was the most rewarding part.
-accuracy
+The primary challenge of this project came from reaching the **80% document retrieval score**. \
+Finding solutions to score those final points and meet the required threshold
+was demanding, yet both engaging and rewarding.
+
+Discovering and applying the various methods used in RAG to enhance
+accuracy was by far the most valuable part of the experience.
 
 
 -------------------------------------------------------------------------------
