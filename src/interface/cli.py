@@ -269,7 +269,7 @@ class RAGCLI:
         )
         engine.run_set_search()
 
-    @validate_args(InterfaceDatasetAnswer, CommandName.SRCH)
+    @validate_args(InterfaceQuery, CommandName.SRCH)
     def answer_hybrid(self, query: str, k: int) -> None:
         """Generate a single hybrid answer.
 
@@ -282,7 +282,7 @@ class RAGCLI:
         engine = Engine(mode=RsrchType.HYBRID, user_query=query, k=k)
         engine.run_single_answer()
 
-    @validate_args(InterfaceQuery, CommandName.ANS_DS)
+    @validate_args(InterfaceDatasetAnswer, CommandName.ANS_DS)
     def answer_dataset_hybrid(self, student_search_result_path: str, save_directory: str) -> None:
         """Generate hybrid answers for a dataset of search results.
 

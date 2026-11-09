@@ -16,6 +16,7 @@ from src.lib import StuSrchRes, StuSrchResAns, MinSrchRes, MinAns, RsrchType
 
 app = FastAPI()
 
+
 @app.post("/api/data")
 def data() -> None:
     """Creates base data folders.
