@@ -8,6 +8,7 @@ from src.interface import validate_args
 from src.lib import RsrchType
 from src.index import Indexer
 from src.retrieval import Engine
+from src.utils import PathFinder
 from src.lib import InterfaceIndex, InterfaceQuery, InterfaceEvaluate, InterfaceDatasetSearch, InterfaceDatasetAnswer
 
 
@@ -26,6 +27,14 @@ class RAGCLI:
 
         print(f"Starting RAG API server at http://{host}:{port}")
         uvicorn.run("src.interface.api:app", host=host, port=port, reload=reload)
+
+    def data(self) -> None:
+        """Creates base data folders.
+
+        """
+
+        pathfinder = PathFinder()
+        pathfinder.secure_index_directories()
 
     @validate_args(InterfaceEvaluate, CommandName.EVAL)
     def evaluate(self, student_search_results_path: str, dataset_path: str) -> None:

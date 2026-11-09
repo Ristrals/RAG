@@ -9,11 +9,21 @@ from pathlib import Path
 
 from src.index import Indexer
 from src.retrieval import Engine
+from src.utils import PathFinder
 from src.lib import InterfaceIndex, InterfaceQuery, InterfaceEvaluate, InterfaceDatasetSearch, InterfaceDatasetAnswer
 from src.lib import StuSrchRes, StuSrchResAns, MinSrchRes, MinAns, RsrchType
 
 
 app = FastAPI()
+
+@app.post("/api/data")
+def data() -> None:
+    """Creates base data folders.
+
+    """
+
+    pathfinder = PathFinder()
+    pathfinder.secure_index_directories()
 
 
 @app.post("/api/evaluate", response_class=PlainTextResponse)
